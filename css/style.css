@@ -122,6 +122,48 @@ html, body {
   opacity: 0.5;
 }
 
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 语言切换器 */
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lang-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s var(--transition-smooth);
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+
+.lang-btn.active {
+  color: var(--color-bg);
+  background: var(--color-accent);
+  box-shadow: 0 1px 4px rgba(201, 168, 108, 0.3);
+}
+
+.lang-btn:not(.active):hover {
+  color: var(--color-text-dim);
+}
+
 /* ============================================
    照片交互区
    ============================================ */

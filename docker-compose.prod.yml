@@ -1,26 +1,24 @@
 # ==========================================
-# LensPause · 息影 - 本地开发配置
-# 从源码构建 Rust 后端 + Caddy 边缘网关
+# LensPause · 息影 - 生产部署配置
+# 从 GitHub Container Registry 拉取预构建镜像
 # ==========================================
 # 使用方式:
-#   1. 从 .env.example 创建 .env 并填入 UNSPLASH_CLIENT_ID
-#   2. docker compose up -d
-#   3. 本地开发访问 http://localhost
-#
-# 生产部署请使用 docker-compose.prod.yml
+#   1. 服务器上登录 ghcr.io:
+#      echo $GITHUB_PAT | docker login ghcr.io -u USERNAME --password-stdin
+#   2. docker compose -f docker-compose.prod.yml pull
+#   3. docker compose -f docker-compose.prod.yml up -d
 # ==========================================
 
 services:
-  # --- Rust 后端 API ---
   backend:
-    build: ./backend
+    image: ghcr.io/aaronlou/lenspause-backend:latest
     expose:
       - "3001"
     env_file:
       - .env
     environment:
       - DATABASE_PATH=/app/data/lenspause.db
-      - BASE_URL=http://localhost:3001
+      - BASE_URL=https://lens.innergrow.ai
     volumes:
       - backend_data:/app/data
     restart: unless-stopped
@@ -32,8 +30,6 @@ services:
     networks:
       - lenspause
 
-  # --- Caddy 边缘网关 ---
-  # 职责：自动 HTTPS + 静态文件服务 + API 反向代理
   caddy:
     image: caddy:2-alpine
     ports:

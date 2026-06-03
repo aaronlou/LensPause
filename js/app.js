@@ -157,8 +157,10 @@
 
   function initDateDisplay() {
     const now = new Date();
-    const months = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"];
-    els.dateDisplay.textContent = `${months[now.getMonth()]}月${now.getDate()}日`;
+    const months = window.i18n.t("date.months");
+    const M = months[now.getMonth()];
+    const D = now.getDate();
+    els.dateDisplay.textContent = window.i18n.t("date.format", { M, D });
   }
 
   async function loadTodayPhoto() {
@@ -201,7 +203,7 @@
         fallback.innerHTML = `
           <div class="fallback-content">
             <p class="fallback-title">${state.photo.title}</p>
-            <p class="fallback-hint">图片加载中…</p>
+            <p class="fallback-hint">${window.i18n.t("fallback.title")}</p>
           </div>
         `;
         wrapper.appendChild(fallback);
@@ -346,19 +348,19 @@
     if (dist <= p.tolerance) {
       dot.className = "hud-dot locked";
       text.className = "hud-text locked";
-      text.textContent = "合焦";
+      text.textContent = window.i18n.t("hud.locked");
       hud.classList.add("in-range");
       els.focusSlider.classList.add("in-sweet-spot");
     } else if (dist <= p.tolerance * 2.5) {
       dot.className = "hud-dot near";
       text.className = "hud-text near";
-      text.textContent = "接近";
+      text.textContent = window.i18n.t("hud.near");
       hud.classList.remove("in-range");
       els.focusSlider.classList.remove("in-sweet-spot");
     } else {
       dot.className = "hud-dot";
       text.className = "hud-text";
-      text.textContent = "失焦";
+      text.textContent = window.i18n.t("hud.out");
       hud.classList.remove("in-range");
       els.focusSlider.classList.remove("in-sweet-spot");
     }
@@ -593,7 +595,7 @@
     const p = state.photo;
     if (!p) return;
     els.photoTitle.textContent = p.title;
-    els.photoPhotographer.textContent = `摄影 / ${p.photographer}`;
+    els.photoPhotographer.textContent = `${p.photographer}`;
     els.exifCamera.textContent = p.exif.camera;
     els.exifLens.textContent = p.exif.lens;
     els.exifFilm.textContent = p.exif.film;
@@ -637,16 +639,19 @@
   }
 
   function handleShare() {
-    const text = `LensPause · 息影\n「${state.photo.title}」\n${state.photo.quote}\n\n—— 每日一帧，片刻清晰`;
+    const text = window.i18n.t("share.format", {
+      title: state.photo.title,
+      quote: state.photo.quote,
+    });
     if (navigator.share) {
       navigator.share({
-        title: "LensPause · 息影",
+        title: window.i18n.t("share.title"),
         text: text,
         url: window.location.href,
       }).catch(() => {});
     } else if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {
-        showToast("已复制到剪贴板");
+        showToast(window.i18n.t("toast.copied"));
       });
     }
   }
@@ -741,6 +746,12 @@
   function initBossKey() {
     generateExcelData();
 
+    // i18n 切换时重新生成 Boss 数据（保持英文即可，Excel 伪装无 i18n 必要）
+    document.addEventListener("i18n:changed", () => {
+      initDateDisplay();
+      updateFocusHUD(state.focusValue);
+    });
+
     // 桌面端：Esc 键
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -796,9 +807,9 @@
   }
 
   function generateExcelData() {
-    const regions = ["华东区", "华北区", "华南区", "西南区", "西北区", "东北区", "华中区"];
-    const managers = ["张伟", "李娜", "王强", "刘洋", "陈静", "杨磊", "赵敏", "孙涛", "周洁", "吴磊"];
-    const notes = ["", "Q3冲刺", "新客户导入", "续约延迟", "渠道调整", "", "大客户流失", ""];
+    const regions = ["East", "North", "South", "SW", "NW", "NE", "Central"];
+    const managers = ["Zhang", "Li", "Wang", "Liu", "Chen", "Yang", "Zhao", "Sun", "Zhou", "Wu"];
+    const notes = ["", "Q3 Sprint", "New Client", "Renewal Delay", "Channel Adj.", "", "Client Churn", ""];
     let totalSum = 0;
 
     const tbody = els.excelTbody;

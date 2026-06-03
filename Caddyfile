@@ -1,41 +1,54 @@
 # ==========================================
-# Caddy 边缘网关配置
-# 生产环境：自动 HTTPS + 路径分发
+# LensPause · 息影 - Caddy 边缘网关
+# 自动 HTTPS + 静态文件 + API 反向代理
 # ==========================================
-# 将 your-domain.com 替换为真实域名
+# 域名: lens.innergrow.ai
 # ==========================================
 
-your-domain.com {
-    # 自动 HTTPS (Let's Encrypt)
-    tls internal
+lens.innergrow.ai {
+    root * /var/www/lenspause
+    encode gzip zstd
+    header X-Frame-Options "DENY"
+    header X-Content-Type-Options "nosniff"
+    header Referrer-Policy "strict-origin-when-cross-origin"
 
-    # 安全头
-    header {
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy strict-origin-when-cross-origin
-    }
-
-    # API 路由 → 后端
+    # API 反向代理到 Rust 后端（优先匹配）
     handle /api/* {
         reverse_proxy backend:3001
     }
 
-    # 静态文件 → 前端 nginx
+    # 静态资源长期缓存
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # SPA fallback + 静态文件服务
     handle {
-        reverse_proxy frontend:80
+        try_files {path} /index.html
+        file_server
     }
 }
 
-# ==========================================
-# 本地开发配置（无 HTTPS）
-# ==========================================
-# :80 {
-#     handle /api/* {
-#         reverse_proxy backend:3001
-#     }
-#     handle {
-#         reverse_proxy frontend:80
-#     }
-# }
+# 本地开发回退（无域名时，HTTP）
+:80 {
+    root * /var/www/lenspause
+    encode gzip zstd
+    header X-Frame-Options "DENY"
+    header X-Content-Type-Options "nosniff"
+    header Referrer-Policy "strict-origin-when-cross-origin"
+
+    handle /api/* {
+        reverse_proxy backend:3001
+    }
+
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}

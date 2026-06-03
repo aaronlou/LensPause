@@ -18,12 +18,18 @@
     <header id="top-bar">
       <div class="brand" id="brand-trigger">
         <span class="brand-icon">◐</span>
-        <span class="brand-name">LensPause</span>
+        <span class="brand-name" data-i18n="brand.name">LensPause</span>
       </div>
-      <div class="meta">
-        <span id="date-display"></span>
-        <span class="divider">·</span>
-        <span id="photo-counter">今日 1/1</span>
+      <div class="top-right">
+        <div class="lang-switcher" id="lang-switcher">
+          <button class="lang-btn active" data-lang="zh" aria-label="Switch to Chinese">中</button>
+          <button class="lang-btn" data-lang="en" aria-label="Switch to English">EN</button>
+        </div>
+        <div class="meta">
+          <span id="date-display"></span>
+          <span class="divider">·</span>
+          <span id="photo-counter"><span data-i18n="date.counter">今日</span> 1/1</span>
+        </div>
       </div>
     </header>
 
@@ -33,7 +39,7 @@
         <img 
           id="photo-image" 
           src="https://bailian-bmp-pre.oss-cn-hangzhou.aliyuncs.com/public/system_agent/PlaceHolder.png" 
-          alt="今日摄影作品" 
+          alt="Today's Photo" data-i18n-attr="alt" data-i18n-attr-key="photo.alt" 
           draggable="false"
         >
         <canvas id="fog-canvas" aria-hidden="true"></canvas>
@@ -43,8 +49,8 @@
 
       <!-- 提示文案 -->
       <div id="interaction-hint" class="interaction-hint">
-        <p>转动对焦环，寻找最佳合焦位置</p>
-        <p>在画面上滑动擦拭雾气</p>
+        <p data-i18n="hint.focus">转动对焦环，寻找最佳合焦位置</p>
+        <p data-i18n="hint.wipe">在画面上滑动擦拭雾气</p>
       </div>
     </main>
 
@@ -57,9 +63,9 @@
       </div>
 
       <div class="slider-labels">
-        <span class="label-left">近端</span>
-        <span class="label-center">对焦环</span>
-        <span class="label-right">远端</span>
+        <span class="label-left" data-i18n="slider.near">近端</span>
+        <span class="label-center" data-i18n="slider.ring">对焦环</span>
+        <span class="label-right" data-i18n="slider.far">远端</span>
       </div>
       <div class="slider-track-wrapper">
         <div class="slider-ticks" id="slider-ticks" aria-hidden="true"></div>
@@ -71,7 +77,9 @@
           max="100" 
           value="0" 
           step="1"
-          aria-label="对焦环"
+          aria-label="Focus Ring"
+          data-i18n-attr="aria-label"
+          data-i18n-attr-key="slider.ring"
         >
         <div class="slider-fill" id="slider-fill"></div>
       </div>
@@ -87,30 +95,30 @@
         </div>
         <div class="exif-panel">
           <div class="exif-row">
-            <span class="exif-key">CAMERA</span>
+            <span class="exif-key" data-i18n="exif.camera">CAMERA</span>
             <span class="exif-val" id="exif-camera"></span>
           </div>
           <div class="exif-row">
-            <span class="exif-key">LENS</span>
+            <span class="exif-key" data-i18n="exif.lens">LENS</span>
             <span class="exif-val" id="exif-lens"></span>
           </div>
           <div class="exif-row">
-            <span class="exif-key">FILM</span>
+            <span class="exif-key" data-i18n="exif.film">FILM</span>
             <span class="exif-val" id="exif-film"></span>
           </div>
           <div class="exif-row">
-            <span class="exif-key">SHUTTER</span>
+            <span class="exif-key" data-i18n="exif.shutter">SHUTTER</span>
             <span class="exif-val" id="exif-shutter"></span>
           </div>
           <div class="exif-row">
-            <span class="exif-key">APERTURE</span>
+            <span class="exif-key" data-i18n="exif.aperture">APERTURE</span>
             <span class="exif-val" id="exif-aperture"></span>
           </div>
         </div>
         <blockquote id="photo-quote" class="photo-quote"></blockquote>
         <div class="reveal-actions">
-          <button id="btn-restart" class="btn-secondary">再来一次</button>
-          <button id="btn-share" class="btn-primary">保存心境</button>
+          <button id="btn-restart" class="btn-secondary" data-i18n="btn.restart">再来一次</button>
+          <button id="btn-share" class="btn-primary" data-i18n="btn.save">保存心境</button>
         </div>
       </div>
     </section>
@@ -118,13 +126,13 @@
     <!-- 进度指示器 -->
     <div id="progress-indicators" class="progress-indicators">
       <div class="progress-item">
-        <span class="progress-label">对焦</span>
+        <span class="progress-label" data-i18n="slider.ring">对焦</span>
         <div class="progress-bar">
           <div class="progress-fill" id="focus-progress"></div>
         </div>
       </div>
       <div class="progress-item">
-        <span class="progress-label">擦拭</span>
+        <span class="progress-label" data-i18n="hint.wipe">擦拭</span>
         <div class="progress-bar">
           <div class="progress-fill" id="wipe-progress"></div>
         </div>
@@ -146,46 +154,46 @@
       </div>
       <div class="excel-ribbon">
         <div class="ribbon-tabs">
-          <span class="ribbon-tab">文件</span>
-          <span class="ribbon-tab">开始</span>
-          <span class="ribbon-tab">插入</span>
-          <span class="ribbon-tab active">数据</span>
-          <span class="ribbon-tab">审阅</span>
-          <span class="ribbon-tab">视图</span>
+          <span class="ribbon-tab" data-i18n="boss.ribbon.file">文件</span>
+          <span class="ribbon-tab" data-i18n="boss.ribbon.home">开始</span>
+          <span class="ribbon-tab" data-i18n="boss.ribbon.insert">插入</span>
+          <span class="ribbon-tab active" data-i18n="boss.ribbon.data">数据</span>
+          <span class="ribbon-tab" data-i18n="boss.ribbon.review">审阅</span>
+          <span class="ribbon-tab" data-i18n="boss.ribbon.view">视图</span>
         </div>
         <div class="ribbon-toolbar">
           <div class="toolbar-group">
-            <span class="tool-btn">排序</span>
-            <span class="tool-btn">筛选</span>
-            <span class="tool-btn">透视表</span>
+            <span class="tool-btn" data-i18n="boss.toolbar.sort">排序</span>
+            <span class="tool-btn" data-i18n="boss.toolbar.filter">筛选</span>
+            <span class="tool-btn" data-i18n="boss.toolbar.pivot">透视表</span>
           </div>
           <div class="toolbar-group">
-            <span class="tool-btn">条件格式</span>
-            <span class="tool-btn">数据验证</span>
+            <span class="tool-btn" data-i18n="boss.toolbar.format">条件格式</span>
+            <span class="tool-btn" data-i18n="boss.toolbar.validate">数据验证</span>
           </div>
         </div>
       </div>
     </div>
     <div class="excel-sheet-bar">
-      <span class="sheet-tab active">Q3汇总</span>
-      <span class="sheet-tab">华东区</span>
-      <span class="sheet-tab">华北区</span>
-      <span class="sheet-tab">华南区</span>
-      <span class="sheet-tab">西南区</span>
+      <span class="sheet-tab active" data-i18n="boss.sheet.summary">Q3汇总</span>
+      <span class="sheet-tab" data-i18n="boss.sheet.east">华东区</span>
+      <span class="sheet-tab" data-i18n="boss.sheet.north">华北区</span>
+      <span class="sheet-tab" data-i18n="boss.sheet.south">华南区</span>
+      <span class="sheet-tab" data-i18n="boss.sheet.southwest">西南区</span>
       <span class="sheet-tab">+</span>
     </div>
     <div class="excel-body">
       <table id="excel-table" class="excel-table">
         <thead>
           <tr>
-            <th>区域</th>
-            <th>负责人</th>
-            <th>Q1营收(万)</th>
-            <th>Q2营收(万)</th>
-            <th>Q3营收(万)</th>
-            <th>同比增长</th>
-            <th>目标完成率</th>
-            <th>备注</th>
+            <th data-i18n="boss.table.region">区域</th>
+            <th data-i18n="boss.table.manager">负责人</th>
+            <th data-i18n="boss.table.q1">Q1营收(万)</th>
+            <th data-i18n="boss.table.q2">Q2营收(万)</th>
+            <th data-i18n="boss.table.q3">Q3营收(万)</th>
+            <th data-i18n="boss.table.yoy">同比增长</th>
+            <th data-i18n="boss.table.target">目标完成率</th>
+            <th data-i18n="boss.table.note">备注</th>
           </tr>
         </thead>
         <tbody id="excel-tbody">
@@ -194,17 +202,18 @@
       </table>
     </div>
     <div class="excel-status-bar">
-      <span>就绪</span>
-      <span>平均值: ¥<span id="excel-avg">0</span>万</span>
-      <span>求和: ¥<span id="excel-sum">0</span>万</span>
-      <span>计数: 50</span>
+      <span data-i18n="boss.status.ready">就绪</span>
+      <span><span data-i18n="boss.status.avg">平均值</span>: ¥<span id="excel-avg">0</span>万</span>
+      <span><span data-i18n="boss.status.sum">求和</span>: ¥<span id="excel-sum">0</span>万</span>
+      <span><span data-i18n="boss.status.count">计数</span>: 50</span>
     </div>
-    <div class="boss-hint">按 Esc 返回息影</div>
+    <div class="boss-hint" data-i18n="boss.hint">按 Esc 返回息影</div>
   </div>
 
   <!-- 音效预留 -->
   <div id="audio-pool" aria-hidden="true"></div>
 
+  <script src="js/i18n.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
