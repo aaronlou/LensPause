@@ -1,0 +1,41 @@
+# ==========================================
+# Caddy 边缘网关配置
+# 生产环境：自动 HTTPS + 路径分发
+# ==========================================
+# 将 your-domain.com 替换为真实域名
+# ==========================================
+
+your-domain.com {
+    # 自动 HTTPS (Let's Encrypt)
+    tls internal
+
+    # 安全头
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # API 路由 → 后端
+    handle /api/* {
+        reverse_proxy backend:3001
+    }
+
+    # 静态文件 → 前端 nginx
+    handle {
+        reverse_proxy frontend:80
+    }
+}
+
+# ==========================================
+# 本地开发配置（无 HTTPS）
+# ==========================================
+# :80 {
+#     handle /api/* {
+#         reverse_proxy backend:3001
+#     }
+#     handle {
+#         reverse_proxy frontend:80
+#     }
+# }

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LensPause · 息影 — 每日一帧，片刻清晰</title>
+  <meta name="description" content="通过手动对焦与擦拭镜头雾气，找回内心的清晰度与微观掌控感">
+  <link rel="preconnect" href="https://bailian-bmp-pre.oss-cn-hangzhou.aliyuncs.com">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 环境光晕层 -->
+  <div id="ambient-light" aria-hidden="true"></div>
+
+  <!-- 主应用容器 -->
+  <div id="app">
+    <!-- 顶部栏 -->
+    <header id="top-bar">
+      <div class="brand" id="brand-trigger">
+        <span class="brand-icon">◐</span>
+        <span class="brand-name">LensPause</span>
+      </div>
+      <div class="meta">
+        <span id="date-display"></span>
+        <span class="divider">·</span>
+        <span id="photo-counter">今日 1/1</span>
+      </div>
+    </header>
+
+    <!-- 核心交互区：照片 + 雾气 -->
+    <main id="photo-area" class="photo-area">
+      <div class="photo-wrapper">
+        <img 
+          id="photo-image" 
+          src="https://bailian-bmp-pre.oss-cn-hangzhou.aliyuncs.com/public/system_agent/PlaceHolder.png" 
+          alt="今日摄影作品" 
+          draggable="false"
+        >
+        <canvas id="fog-canvas" aria-hidden="true"></canvas>
+      </div>
+      <!-- 自定义光标 -->
+      <div id="custom-cursor" class="custom-cursor" aria-hidden="true"></div>
+
+      <!-- 提示文案 -->
+      <div id="interaction-hint" class="interaction-hint">
+        <p>转动对焦环，寻找最佳合焦位置</p>
+        <p>在画面上滑动擦拭雾气</p>
+      </div>
+    </main>
+
+    <!-- 对焦控制区 -->
+    <section id="focus-controls" class="focus-controls">
+      <!-- 对焦精度 HUD -->
+      <div class="focus-hud" id="focus-hud">
+        <span class="hud-dot" id="hud-dot"></span>
+        <span class="hud-text" id="hud-text">失焦</span>
+      </div>
+
+      <div class="slider-labels">
+        <span class="label-left">近端</span>
+        <span class="label-center">对焦环</span>
+        <span class="label-right">远端</span>
+      </div>
+      <div class="slider-track-wrapper">
+        <div class="slider-ticks" id="slider-ticks" aria-hidden="true"></div>
+        <div class="sweet-spot-zone" id="sweet-spot-zone" aria-hidden="true"></div>
+        <input 
+          type="range" 
+          id="focus-slider" 
+          min="0" 
+          max="100" 
+          value="0" 
+          step="1"
+          aria-label="对焦环"
+        >
+        <div class="slider-fill" id="slider-fill"></div>
+      </div>
+      <div class="focus-value" id="focus-value">0%</div>
+    </section>
+
+    <!-- 显影信息卡片 -->
+    <section id="reveal-card" class="reveal-card" aria-hidden="true">
+      <div class="reveal-inner">
+        <div class="reveal-header">
+          <h2 id="photo-title" class="photo-title"></h2>
+          <p id="photo-photographer" class="photo-photographer"></p>
+        </div>
+        <div class="exif-panel">
+          <div class="exif-row">
+            <span class="exif-key">CAMERA</span>
+            <span class="exif-val" id="exif-camera"></span>
+          </div>
+          <div class="exif-row">
+            <span class="exif-key">LENS</span>
+            <span class="exif-val" id="exif-lens"></span>
+          </div>
+          <div class="exif-row">
+            <span class="exif-key">FILM</span>
+            <span class="exif-val" id="exif-film"></span>
+          </div>
+          <div class="exif-row">
+            <span class="exif-key">SHUTTER</span>
+            <span class="exif-val" id="exif-shutter"></span>
+          </div>
+          <div class="exif-row">
+            <span class="exif-key">APERTURE</span>
+            <span class="exif-val" id="exif-aperture"></span>
+          </div>
+        </div>
+        <blockquote id="photo-quote" class="photo-quote"></blockquote>
+        <div class="reveal-actions">
+          <button id="btn-restart" class="btn-secondary">再来一次</button>
+          <button id="btn-share" class="btn-primary">保存心境</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 进度指示器 -->
+    <div id="progress-indicators" class="progress-indicators">
+      <div class="progress-item">
+        <span class="progress-label">对焦</span>
+        <div class="progress-bar">
+          <div class="progress-fill" id="focus-progress"></div>
+        </div>
+      </div>
+      <div class="progress-item">
+        <span class="progress-label">擦拭</span>
+        <div class="progress-bar">
+          <div class="progress-fill" id="wipe-progress"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boss Key 伪装界面：Excel 报表 -->
+  <div id="boss-screen" class="boss-screen" aria-hidden="true" style="display:none;">
+    <div class="excel-header">
+      <div class="excel-title-bar">
+        <span class="excel-icon">📊</span>
+        <span class="excel-title">Q3_Region_Revenue_Analysis_v3.xlsx - Excel</span>
+        <div class="excel-window-btns">
+          <span class="win-btn minimize">−</span>
+          <span class="win-btn maximize">□</span>
+          <span class="win-btn close">×</span>
+        </div>
+      </div>
+      <div class="excel-ribbon">
+        <div class="ribbon-tabs">
+          <span class="ribbon-tab">文件</span>
+          <span class="ribbon-tab">开始</span>
+          <span class="ribbon-tab">插入</span>
+          <span class="ribbon-tab active">数据</span>
+          <span class="ribbon-tab">审阅</span>
+          <span class="ribbon-tab">视图</span>
+        </div>
+        <div class="ribbon-toolbar">
+          <div class="toolbar-group">
+            <span class="tool-btn">排序</span>
+            <span class="tool-btn">筛选</span>
+            <span class="tool-btn">透视表</span>
+          </div>
+          <div class="toolbar-group">
+            <span class="tool-btn">条件格式</span>
+            <span class="tool-btn">数据验证</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="excel-sheet-bar">
+      <span class="sheet-tab active">Q3汇总</span>
+      <span class="sheet-tab">华东区</span>
+      <span class="sheet-tab">华北区</span>
+      <span class="sheet-tab">华南区</span>
+      <span class="sheet-tab">西南区</span>
+      <span class="sheet-tab">+</span>
+    </div>
+    <div class="excel-body">
+      <table id="excel-table" class="excel-table">
+        <thead>
+          <tr>
+            <th>区域</th>
+            <th>负责人</th>
+            <th>Q1营收(万)</th>
+            <th>Q2营收(万)</th>
+            <th>Q3营收(万)</th>
+            <th>同比增长</th>
+            <th>目标完成率</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody id="excel-tbody">
+          <!-- JS 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+    <div class="excel-status-bar">
+      <span>就绪</span>
+      <span>平均值: ¥<span id="excel-avg">0</span>万</span>
+      <span>求和: ¥<span id="excel-sum">0</span>万</span>
+      <span>计数: 50</span>
+    </div>
+    <div class="boss-hint">按 Esc 返回息影</div>
+  </div>
+
+  <!-- 音效预留 -->
+  <div id="audio-pool" aria-hidden="true"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

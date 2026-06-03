@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 后端构建产物
+backend/target
+backend/Cargo.lock
+backend/*.db
+backend/logs/
+
+# 前端不需要的
+screenshot*.png
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# 环境变量（安全）
+.env
+.env.local
