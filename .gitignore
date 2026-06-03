@@ -7,7 +7,6 @@
 
 # 后端构建产物
 backend/target/
-backend/Cargo.lock
 backend/*.db
 backend/*.db-journal
 
