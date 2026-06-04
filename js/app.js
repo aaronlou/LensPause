@@ -13,14 +13,9 @@
   const state = {
     photo: null,
     focusValue: 0,
-    wipeProgress: 0,
     isRevealed: false,
     isBossMode: false,
     isDragging: false,
-    lastWipeTime: 0,
-    totalPixels: 0,
-    clearedPixels: 0,
-    wipeThreshold: 0.85,
     canvasScale: 1,
   };
 
@@ -55,7 +50,6 @@
     exifAperture: $("exif-aperture"),
     photoQuote: $("photo-quote"),
     focusProgress: $("focus-progress"),
-    wipeProgress: $("wipe-progress"),
     bossScreen: $("boss-screen"),
     excelTbody: $("excel-tbody"),
     excelAvg: $("excel-avg"),
@@ -152,8 +146,7 @@
     initCanvas();
     initSliderTicks();
     initFocusSlider();
-    initWipeInteraction();
-    initCustomCursor();
+
     initAmbientLight();
     initBossKey();
     initRevealActions();
@@ -312,10 +305,6 @@
     }
     ctx.putImageData(imageData, 0, 0);
 
-    // 重置透明像素计数
-    state.clearedPixels = 0;
-    state.wipeProgress = 0;
-    updateWipeProgressUI();
   }
 
   // ============================================
@@ -462,119 +451,6 @@
     updateFocusHUD(value);
   }
 
-  // ============================================
-  // 雾气擦拭交互
-  // ============================================
-  function initWipeInteraction() {
-    const canvas = els.fogCanvas;
-
-    canvas.addEventListener("mousedown", onWipeStart);
-    canvas.addEventListener("touchstart", onWipeStart, { passive: false });
-
-    document.addEventListener("mousemove", onWipeMove);
-    document.addEventListener("touchmove", onWipeMove, { passive: false });
-
-    document.addEventListener("mouseup", onWipeEnd);
-    document.addEventListener("touchend", onWipeEnd);
-  }
-
-  function getCanvasPos(e) {
-    const rect = els.fogCanvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
-  }
-
-  function onWipeStart(e) {
-    if (state.isRevealed || state.isBossMode) return;
-    state.isDragging = true;
-    audio.init();
-    audio.playWipe();
-    hideInteractionHint();
-
-    const pos = getCanvasPos(e);
-    eraseAt(pos.x, pos.y);
-    e.preventDefault();
-  }
-
-  function onWipeMove(e) {
-    if (!state.isDragging || state.isRevealed || state.isBossMode) return;
-
-    const pos = getCanvasPos(e);
-    eraseAt(pos.x, pos.y);
-
-    // 限制检测频率（每 300ms 检测一次，平衡性能与响应）
-    const now = Date.now();
-    if (now - state.lastWipeTime > 300) {
-      state.lastWipeTime = now;
-      requestAnimationFrame(checkWipeProgress);
-    }
-
-    if (e.touches) e.preventDefault();
-  }
-
-  function onWipeEnd() {
-    state.isDragging = false;
-    if (!state.isRevealed && !state.isBossMode) {
-      requestAnimationFrame(checkWipeProgress);
-    }
-  }
-
-  function eraseAt(x, y) {
-    const radius = 32;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 边缘柔化：再画一个更大但透明度更低的圆
-    const grad = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius * 1.5);
-    grad.addColorStop(0, "rgba(0,0,0,1)");
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function checkWipeProgress() {
-    const w = els.fogCanvas.width;
-    const h = els.fogCanvas.height;
-    const total = w * h;
-
-    // 抽样检测（提升性能）：每 4 个像素取 1 个
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
-    let transparent = 0;
-    const step = 4;
-    const sampleTotal = Math.ceil(total / (step * step));
-
-    for (let y = 0; y < h; y += step) {
-      for (let x = 0; x < w; x += step) {
-        const idx = (y * w + x) * 4;
-        if (data[idx + 3] < 50) {
-          transparent++;
-        }
-      }
-    }
-
-    const ratio = transparent / sampleTotal;
-    state.wipeProgress = Math.min(1, ratio);
-    updateWipeProgressUI();
-
-    if (state.wipeProgress >= state.wipeThreshold) {
-      checkRevealCondition();
-    }
-  }
-
-  function updateWipeProgressUI() {
-    const pct = Math.round(state.wipeProgress * 100);
-    els.wipeProgress.style.height = pct + "%";
-  }
-
   function hideInteractionHint() {
     els.interactionHint.classList.add("hidden");
   }
@@ -586,7 +462,7 @@
     if (state.isRevealed || !state.photo) return;
     const p = state.photo;
     const inSweetSpot = Math.abs(state.focusValue - p.sweetSpot) <= p.tolerance;
-    if (inSweetSpot && state.wipeProgress >= state.wipeThreshold) {
+    if (inSweetSpot) {
       performReveal();
     }
   }
@@ -703,10 +579,45 @@
     });
   }
 
+  async function loadRandomPhoto() {
+    try {
+      const apiBase = window.location.hostname === "localhost"
+        ? "http://localhost:3001"
+        : "";
+      const resp = await fetch(`${apiBase}/api/photos`);
+      if (!resp.ok) throw new Error("API failed");
+      const pool = await resp.json();
+      if (!Array.isArray(pool) || pool.length === 0) throw new Error("Empty pool");
+
+      // 随机选一张（尽量不和当前重复）
+      let attempts = 0;
+      let selected;
+      do {
+        selected = pool[Math.floor(Math.random() * pool.length)];
+        attempts++;
+      } while (state.photo && selected.id === state.photo.id && attempts < 5);
+
+      state.photo = {
+        id: selected.id,
+        url: selected.image_url,
+        title: selected.title,
+        photographer: selected.photographer,
+        photographer_link: selected.photographer_link,
+        exif: selected.exif,
+        quote: selected.quote,
+        sweetSpot: selected.focus_params.sweet_spot,
+        tolerance: selected.focus_params.tolerance,
+        curve: selected.focus_params.curve,
+      };
+      randomizeFocusParams();
+    } catch (err) {
+      console.warn("Failed to load random photo, keeping current", err);
+    }
+  }
+
   function resetReveal() {
     state.isRevealed = false;
     state.focusValue = 0;
-    state.wipeProgress = 0;
     lastTickCrossed = -1;
 
     els.revealCard.classList.remove("visible");
@@ -716,7 +627,6 @@
     els.focusSlider.disabled = false;
     els.focusSlider.value = 0;
     updateFocusVisuals(0);
-    updateWipeProgressUI();
     updateFocusHUD(0);
     updateSweetSpotZone();
 
@@ -727,6 +637,13 @@
     els.interactionHint.classList.remove("hidden");
 
     drawFog();
+
+    // 换一张新照片
+    loadRandomPhoto().then(() => {
+      els.photoImage.src = state.photo.url;
+      els.photoImage.alt = state.photo.title;
+      updateSweetSpotZone();
+    });
 
     // 计数并判断是否弹出打赏
     const count = incrementRestartCount();
@@ -985,35 +902,12 @@
       updateFocusVisuals(val);
       hideInteractionHint();
     }
-    if (params.has("wipe")) {
-      const ratio = parseFloat(params.get("wipe"));
-      // 模拟擦除：随机擦除对应比例的像素
-      const w = els.fogCanvas.width / state.canvasScale;
-      const h = els.fogCanvas.height / state.canvasScale;
-      ctx.globalCompositeOperation = "destination-out";
-      const totalArea = w * h;
-      const eraseArea = totalArea * ratio;
-      const brushSize = 40;
-      const strokes = Math.ceil(eraseArea / (Math.PI * brushSize * brushSize));
-      for (let i = 0; i < strokes; i++) {
-        const x = Math.random() * w;
-        const y = Math.random() * h;
-        ctx.beginPath();
-        ctx.arc(x, y, brushSize, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      state.wipeProgress = ratio;
-      updateWipeProgressUI();
-      hideInteractionHint();
-    }
     if (params.has("reveal")) {
       const p = state.photo;
       const revealFocus = p ? p.sweetSpot : 50;
       state.focusValue = revealFocus;
-      state.wipeProgress = 1;
       els.focusSlider.value = revealFocus;
       updateFocusVisuals(revealFocus);
-      updateWipeProgressUI();
       // 演示模式：跳过动画直接显示
       state.isRevealed = true;
       ctx.clearRect(0, 0, els.fogCanvas.width / state.canvasScale, els.fogCanvas.height / state.canvasScale);
@@ -1039,8 +933,7 @@
     initCanvas();
     initSliderTicks();
     initFocusSlider();
-    initWipeInteraction();
-    initCustomCursor();
+
     initAmbientLight();
     initBossKey();
     initRevealActions();
