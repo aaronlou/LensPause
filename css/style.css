@@ -204,6 +204,11 @@ html, body {
   -webkit-user-drag: none;
 }
 
+#app.revealed #photo-image,
+#photo-image.revealed {
+  filter: blur(0) !important;
+}
+
 #fog-canvas {
   position: absolute;
   top: 0;
@@ -212,6 +217,12 @@ html, body {
   height: 100%;
   touch-action: none;
   cursor: none;
+}
+
+#app.revealed #fog-canvas,
+#fog-canvas.revealed {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* 自定义光标 */

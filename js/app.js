@@ -316,6 +316,8 @@
 
     els.photoImage.style.display = "";
     els.photoImage.alt = state.photo.title;
+    els.photoImage.classList.toggle("revealed", state.isRevealed);
+    els.fogCanvas.classList.toggle("revealed", state.isRevealed);
     els.photoImage.onerror = () => {
       els.photoImage.style.display = "none";
       let fallback = wrapper.querySelector(".photo-fallback");
@@ -528,6 +530,10 @@
 
   function updateFocusVisuals(value) {
     const p = state.photo;
+    if (state.isRevealed) {
+      els.photoImage.style.filter = "blur(0px)";
+      return;
+    }
     let blurPx = 20;
     if (p) {
       blurPx = calculateBlur(value, p.sweetSpot, p.tolerance, p.curve);
@@ -566,6 +572,8 @@
 
     // 确保图片完全清晰
     els.photoImage.style.filter = "blur(0px)";
+    els.photoImage.classList.add("revealed");
+    els.fogCanvas.classList.add("revealed");
 
     // 禁用滑块
     els.focusSlider.disabled = true;
@@ -713,6 +721,8 @@
     els.revealCard.classList.remove("visible");
     els.revealCard.setAttribute("aria-hidden", "true");
     els.app.classList.remove("revealed");
+    els.photoImage.classList.remove("revealed");
+    els.fogCanvas.classList.remove("revealed");
 
     els.focusSlider.disabled = false;
     els.focusSlider.value = 0;
@@ -1041,6 +1051,8 @@
       state.isRevealed = true;
       ctx.clearRect(0, 0, els.fogCanvas.width / state.canvasScale, els.fogCanvas.height / state.canvasScale);
       els.photoImage.style.filter = "blur(0px)";
+      els.photoImage.classList.add("revealed");
+      els.fogCanvas.classList.add("revealed");
       els.focusSlider.disabled = true;
       fillRevealCard();
       els.revealCard.style.transition = "none";
