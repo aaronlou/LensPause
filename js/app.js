@@ -57,7 +57,8 @@
     dateDisplay: $("date-display"),
     btnRestart: $("btn-restart"),
     btnShare: $("btn-share"),
-    btnDismissCard: $("btn-dismiss-card"),
+    revealInner: $("reveal-inner"),
+    revealHandle: $("reveal-handle"),
     donateModal: $("donate-modal"),
     donateOverlay: $("donate-overlay"),
     donateClose: $("donate-close"),
@@ -639,6 +640,11 @@
         randomizeFocusParams();
       }
     }
+
+    // 更新图片元素
+    els.photoImage.src = state.photo.url;
+    els.photoImage.alt = state.photo.title;
+    updateSweetSpotZone();
   }
 
   function resetReveal() {
@@ -692,10 +698,38 @@
   function initRevealActions() {
     els.btnRestart.addEventListener("click", resetReveal);
     els.btnShare.addEventListener("click", handleShare);
-    els.btnDismissCard.addEventListener("click", dismissRevealCard);
-    // 点击照片区域也可收起卡片
+
+    // 点击照片区域收起卡片
     document.getElementById("photo-area").addEventListener("click", (e) => {
-      if (state.isRevealed && !e.target.closest(".reveal-card")) {
+      if (state.isRevealed) {
+        dismissRevealCard();
+      }
+    });
+
+    // 拖拽手柄：点击 + 下滑手势收起卡片
+    let touchStartY = 0;
+    let touchMoved = false;
+
+    els.revealHandle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dismissRevealCard();
+    });
+
+    els.revealHandle.addEventListener("touchstart", (e) => {
+      touchStartY = e.touches[0].clientY;
+      touchMoved = false;
+    }, { passive: true });
+
+    els.revealHandle.addEventListener("touchmove", (e) => {
+      const dy = e.touches[0].clientY - touchStartY;
+      if (dy > 10) {
+        touchMoved = true;
+        dismissRevealCard();
+      }
+    }, { passive: true });
+
+    els.revealHandle.addEventListener("touchend", (e) => {
+      if (!touchMoved) {
         dismissRevealCard();
       }
     });

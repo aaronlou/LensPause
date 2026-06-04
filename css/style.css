@@ -589,29 +589,31 @@ html, body {
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
 }
 
-.reveal-dismiss {
-  position: absolute;
-  top: 12px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-text-dim);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
+.reveal-handle {
   display: flex;
-  align-items: center;
   justify-content: center;
-  transition: all 0.3s var(--transition-smooth);
-  z-index: 10;
+  align-items: center;
+  padding: 12px 0 8px;
+  cursor: grab;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-.reveal-dismiss:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--color-text);
+.reveal-handle:active {
+  cursor: grabbing;
+}
+
+.handle-bar {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  transition: background 0.2s;
+}
+
+.reveal-handle:active .handle-bar {
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .reveal-header {
