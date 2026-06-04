@@ -67,6 +67,15 @@
   };
 
   const ctx = els.fogCanvas.getContext("2d", { willReadFrequently: true });
+  const LAST_PHOTO_ID_KEY = "lenspause_last_photo_id";
+  const DEFAULT_PHOTO_URL = "https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=800&q=80";
+  const DEFAULT_EXIF = {
+    camera: "Unknown Camera",
+    lens: "Unknown Lens",
+    film: "Digital",
+    shutter: "1/125s",
+    aperture: "f/5.6",
+  };
 
   // ============================================
   // 音效系统（预留接口）
@@ -190,50 +199,22 @@
       if (!resp.ok) throw new Error("API failed");
       const data = await resp.json();
 
-      // 适配后端数据结构到前端 state.photo
-      state.photo = {
-        id: data.id,
-        url: data.image_url,
-        title: data.title,
-        photographer: data.photographer,
-        photographer_link: data.photographer_link,
-        exif: data.exif,
-        quote: data.quote,
-        sweetSpot: data.focus_params.sweet_spot,
-        tolerance: data.focus_params.tolerance,
-        curve: data.focus_params.curve,
-      };
+      state.photo = normalizePhoto(data);
     } catch (err) {
       console.warn("Backend unavailable, using fallback photo", err);
       // Fallback：当后端不可用时使用内置数据
-      state.photo = getFallbackPhoto();
+      state.photo = getFallbackPhoto(state.photo?.id);
     }
 
     // 每次加载都重新随机化 sweetSpot，让用户每次都有不确定性
     randomizeFocusParams();
 
-    els.photoImage.src = state.photo.url;
-    els.photoImage.alt = state.photo.title;
-    els.photoImage.onerror = () => {
-      els.photoImage.style.display = "none";
-      const wrapper = els.photoImage.parentElement;
-      let fallback = wrapper.querySelector(".photo-fallback");
-      if (!fallback) {
-        fallback = document.createElement("div");
-        fallback.className = "photo-fallback";
-        fallback.innerHTML = `
-          <div class="fallback-content">
-            <p class="fallback-title">${state.photo.title}</p>
-            <p class="fallback-hint">${window.i18n.t("fallback.title")}</p>
-          </div>
-        `;
-        wrapper.appendChild(fallback);
-      }
-    };
+    rememberLastPhoto(state.photo);
+    applyPhotoToDom();
     updateSweetSpotZone();
   }
 
-  function getFallbackPhoto() {
+  function getFallbackPhoto(excludeId = null) {
     const fallbackPhotos = [
       {
         id: "fallback-001",
@@ -266,7 +247,91 @@
         sweetSpot: 55, tolerance: 4, curve: 0.9,
       },
     ];
-    return fallbackPhotos[Math.floor(Math.random() * fallbackPhotos.length)];
+    const selected = selectDifferentPhoto(fallbackPhotos, excludeId);
+    return normalizePhoto(selected);
+  }
+
+  function normalizePhoto(raw = {}) {
+    const focus = raw.focus_params || raw.focusParams || {};
+    const exif = raw.exif || {};
+    const url = raw.image_url || raw.imageUrl || raw.url || raw.image_thumb_url || raw.imageThumbUrl || DEFAULT_PHOTO_URL;
+
+    return {
+      id: String(raw.id || url || `photo-${Date.now()}`),
+      url,
+      title: raw.title || window.i18n.t("photo.alt") || "Today's Photo",
+      photographer: raw.photographer || "Unknown Photographer",
+      photographer_link: raw.photographer_link || raw.photographerLink || "",
+      exif: {
+        camera: exif.camera || DEFAULT_EXIF.camera,
+        lens: exif.lens || DEFAULT_EXIF.lens,
+        film: exif.film || DEFAULT_EXIF.film,
+        shutter: exif.shutter || DEFAULT_EXIF.shutter,
+        aperture: exif.aperture || DEFAULT_EXIF.aperture,
+      },
+      quote: raw.quote || "片刻清晰，也是一种抵达。",
+      sweetSpot: clampNumber(focus.sweet_spot ?? focus.sweetSpot ?? raw.sweetSpot, 20, 80, 50),
+      tolerance: clampNumber(focus.tolerance ?? raw.tolerance, 3, 12, 6),
+      curve: clampNumber(focus.curve ?? raw.curve, 0.5, 1.1, 0.8),
+    };
+  }
+
+  function clampNumber(value, min, max, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function getLastPhotoId() {
+    try {
+      return sessionStorage.getItem(LAST_PHOTO_ID_KEY);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function rememberLastPhoto(photo) {
+    if (!photo?.id) return;
+    try {
+      sessionStorage.setItem(LAST_PHOTO_ID_KEY, photo.id);
+    } catch (err) {
+      // sessionStorage 可能在隐私模式下不可用，忽略即可。
+    }
+  }
+
+  function selectDifferentPhoto(photos, excludeId = getLastPhotoId()) {
+    if (!Array.isArray(photos) || photos.length === 0) return null;
+    const candidates = photos.length > 1 && excludeId
+      ? photos.filter((photo) => String(photo.id) !== String(excludeId))
+      : photos;
+    const pool = candidates.length > 0 ? candidates : photos;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function applyPhotoToDom() {
+    if (!state.photo) return;
+    const wrapper = els.photoImage.parentElement;
+    const existingFallback = wrapper.querySelector(".photo-fallback");
+    if (existingFallback) existingFallback.remove();
+
+    els.photoImage.style.display = "";
+    els.photoImage.alt = state.photo.title;
+    els.photoImage.onerror = () => {
+      els.photoImage.style.display = "none";
+      let fallback = wrapper.querySelector(".photo-fallback");
+      if (!fallback) {
+        fallback = document.createElement("div");
+        fallback.className = "photo-fallback";
+        fallback.innerHTML = `
+          <div class="fallback-content">
+            <p class="fallback-title">${state.photo.title}</p>
+            <p class="fallback-hint">${window.i18n.t("fallback.title")}</p>
+          </div>
+        `;
+        wrapper.appendChild(fallback);
+      }
+    };
+    els.photoImage.src = state.photo.url;
   }
 
   // 每次页面加载时随机化对焦参数，制造不确定性
@@ -434,11 +499,17 @@
     audio.playFocus(value / 100);
     hideInteractionHint();
 
-    // 经过 5% 刻度点时轻反馈
+    // 经过 5% 刻度点时轻反馈（模拟镜头对焦环段落感）
     const tickSpacing = 5;
     const currentTick = Math.floor(value / tickSpacing);
     if (currentTick !== lastTickCrossed) {
       lastTickCrossed = currentTick;
+      // 轻量视觉跳动
+      els.focusSlider.classList.add("click-bump");
+      setTimeout(() => els.focusSlider.classList.remove("click-bump"), 80);
+      // 轻量触觉反馈
+      if (navigator.vibrate) navigator.vibrate(4);
+      // 刻度高亮
       document.querySelectorAll(".tick-mark").forEach((t) => {
         const tv = parseInt(t.dataset.value, 10);
         t.classList.toggle("active", tv === currentTick * tickSpacing);
@@ -618,38 +689,19 @@
       const pool = await resp.json();
       if (!Array.isArray(pool) || pool.length === 0) throw new Error("Empty pool");
 
-      // 随机选一张（尽量不和当前重复）
-      let attempts = 0;
-      let selected;
-      do {
-        selected = pool[Math.floor(Math.random() * pool.length)];
-        attempts++;
-      } while (state.photo && selected.id === state.photo.id && attempts < 5);
-
-      state.photo = {
-        id: selected.id,
-        url: selected.image_url,
-        title: selected.title,
-        photographer: selected.photographer,
-        photographer_link: selected.photographer_link,
-        exif: selected.exif,
-        quote: selected.quote,
-        sweetSpot: selected.focus_params.sweet_spot,
-        tolerance: selected.focus_params.tolerance,
-        curve: selected.focus_params.curve,
-      };
+      const selected = selectDifferentPhoto(pool, state.photo?.id || getLastPhotoId());
+      state.photo = normalizePhoto(selected);
       randomizeFocusParams();
     } catch (err) {
       console.warn("Failed to load random photo, using local fallback", err);
-      if (!state.photo) {
-        state.photo = getFallbackPhoto();
-        randomizeFocusParams();
-      }
+      state.photo = getFallbackPhoto(state.photo?.id || getLastPhotoId());
+      randomizeFocusParams();
     }
 
     // 更新图片元素
-    els.photoImage.src = state.photo.url;
-    els.photoImage.alt = state.photo.title;
+    rememberLastPhoto(state.photo);
+    applyPhotoToDom();
+    updateFocusVisuals(state.focusValue);
     updateSweetSpotZone();
   }
 
@@ -677,11 +729,7 @@
     drawFog();
 
     // 换一张新照片
-    loadRandomPhoto().then(() => {
-      els.photoImage.src = state.photo.url;
-      els.photoImage.alt = state.photo.title;
-      updateSweetSpotZone();
-    });
+    loadRandomPhoto();
 
     // 计数并判断是否弹出打赏
     const count = incrementRestartCount();

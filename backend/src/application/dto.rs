@@ -44,7 +44,12 @@ pub struct PhotoPoolItemDto {
     pub id: String,
     pub title: String,
     pub photographer: String,
+    pub photographer_link: String,
+    pub image_url: String,
     pub image_thumb_url: String,
+    pub exif: ExifInfo,
+    pub quote: String,
+    pub focus_params: FocusParams,
     pub assigned_date: Option<String>,
 }
 
@@ -54,7 +59,12 @@ impl From<DailyPhoto> for PhotoPoolItemDto {
             id: photo.id.as_str().to_string(),
             title: photo.title,
             photographer: photo.photographer,
+            photographer_link: photo.photographer_link,
+            image_url: photo.image_url,
             image_thumb_url: photo.image_thumb_url,
+            exif: photo.exif,
+            quote: photo.quote,
+            focus_params: photo.focus_params,
             assigned_date: photo.assigned_date.map(|d| d.to_string()),
         }
     }
