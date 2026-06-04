@@ -164,11 +164,23 @@
   }
 
   async function loadTodayPhoto() {
+    const apiBase = window.location.hostname === "localhost"
+      ? "http://localhost:3001"
+      : "";
+
     try {
-      const apiBase = window.location.hostname === "localhost"
-        ? "http://localhost:3001"
-        : "";
-      const resp = await fetch(`${apiBase}/api/photos/today`);
+      let resp = await fetch(`${apiBase}/api/photos/today`);
+
+      // 如果 photo pool 为空（503），自动触发 fetch 填充池子
+      if (resp.status === 503) {
+        console.log("Photo pool empty, fetching new photos...");
+        const fetchResp = await fetch(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
+        if (fetchResp.ok) {
+          console.log("Photos fetched, retrying today photo...");
+          resp = await fetch(`${apiBase}/api/photos/today`);
+        }
+      }
+
       if (!resp.ok) throw new Error("API failed");
       const data = await resp.json();
 
@@ -190,6 +202,9 @@
       // Fallback：当后端不可用时使用内置数据
       state.photo = getFallbackPhoto();
     }
+
+    // 每次加载都重新随机化 sweetSpot，让用户每次都有不确定性
+    randomizeFocusParams();
 
     els.photoImage.src = state.photo.url;
     els.photoImage.alt = state.photo.title;
@@ -216,7 +231,7 @@
     const fallbackPhotos = [
       {
         id: "fallback-001",
-        url: "https://bailian-bmp-pre.oss-cn-hangzhou.aliyuncs.com/public/system_agent/PlaceHolder.png",
+        url: "https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=800&q=80",
         title: "晨雾中的灯塔",
         photographer: "Hiroshi Sugimoto",
         photographer_link: "",
@@ -226,6 +241,17 @@
       },
     ];
     return fallbackPhotos[0];
+  }
+
+  // 每次页面加载时随机化对焦参数，制造不确定性
+  function randomizeFocusParams() {
+    if (!state.photo) return;
+    // sweetSpot: 20-80 之间随机整数
+    state.photo.sweetSpot = Math.floor(20 + Math.random() * 61);
+    // tolerance: 3-8 之间随机整数
+    state.photo.tolerance = Math.floor(3 + Math.random() * 6);
+    // curve: 0.5-1.1 之间随机，保留两位小数
+    state.photo.curve = Math.round((0.5 + Math.random() * 0.6) * 100) / 100;
   }
 
   // ============================================
