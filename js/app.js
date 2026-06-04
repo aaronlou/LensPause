@@ -57,6 +57,7 @@
     dateDisplay: $("date-display"),
     btnRestart: $("btn-restart"),
     btnShare: $("btn-share"),
+    btnDismissCard: $("btn-dismiss-card"),
     donateModal: $("donate-modal"),
     donateOverlay: $("donate-overlay"),
     donateClose: $("donate-close"),
@@ -237,8 +238,28 @@
         quote: "有时候，增加一点颗粒感，生活的粗糙也就成了质感。",
         sweetSpot: 47, tolerance: 5, curve: 0.78,
       },
+      {
+        id: "fallback-002",
+        url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80",
+        title: "雨后的玻璃窗",
+        photographer: "Saul Leiter",
+        photographer_link: "",
+        exif: { camera: "Contax T2", lens: "38mm f/2.8", film: "Kodak Gold 200", shutter: "1/60s", aperture: "f/4" },
+        quote: "模糊不是缺陷，是光线在寻找另一种表达。",
+        sweetSpot: 35, tolerance: 6, curve: 0.65,
+      },
+      {
+        id: "fallback-003",
+        url: "https://images.unsplash.com/photo-1470770903676-69b98201ea1c?w=800&q=80",
+        title: "旧书店的午后",
+        photographer: "William Eggleston",
+        photographer_link: "",
+        exif: { camera: "LEICA M10", lens: "50mm f/1.4", film: "Digital", shutter: "1/250s", aperture: "f/2" },
+        quote: "每一束穿过尘埃的光，都是时间写下的诗。",
+        sweetSpot: 55, tolerance: 4, curve: 0.9,
+      },
     ];
-    return fallbackPhotos[0];
+    return fallbackPhotos[Math.floor(Math.random() * fallbackPhotos.length)];
   }
 
   // 每次页面加载时随机化对焦参数，制造不确定性
@@ -579,12 +600,24 @@
     });
   }
 
-  async function loadRandomPhoto() {
+  async function loadRandomPhoto(allowAutoFetch = true) {
+    const apiBase = window.location.hostname === "localhost"
+      ? "http://localhost:3001"
+      : "";
+
     try {
-      const apiBase = window.location.hostname === "localhost"
-        ? "http://localhost:3001"
-        : "";
-      const resp = await fetch(`${apiBase}/api/photos`);
+      let resp = await fetch(`${apiBase}/api/photos`);
+
+      // 如果 photo pool 为空（503），自动触发 fetch 填充池子
+      if (allowAutoFetch && resp.status === 503) {
+        console.log("Photo pool empty, fetching new photos...");
+        const fetchResp = await fetch(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
+        if (fetchResp.ok) {
+          console.log("Photos fetched, retrying pool...");
+          resp = await fetch(`${apiBase}/api/photos`);
+        }
+      }
+
       if (!resp.ok) throw new Error("API failed");
       const pool = await resp.json();
       if (!Array.isArray(pool) || pool.length === 0) throw new Error("Empty pool");
@@ -611,7 +644,11 @@
       };
       randomizeFocusParams();
     } catch (err) {
-      console.warn("Failed to load random photo, keeping current", err);
+      console.warn("Failed to load random photo, using local fallback", err);
+      if (!state.photo) {
+        state.photo = getFallbackPhoto();
+        randomizeFocusParams();
+      }
     }
   }
 
@@ -655,9 +692,24 @@
   // ============================================
   // 显影后操作
   // ============================================
+  function dismissRevealCard() {
+    if (!state.isRevealed) return;
+    els.revealCard.classList.remove("visible");
+    els.revealCard.setAttribute("aria-hidden", "true");
+    els.app.classList.remove("revealed");
+    els.focusProgress.parentElement.parentElement.style.opacity = "";
+  }
+
   function initRevealActions() {
     els.btnRestart.addEventListener("click", resetReveal);
     els.btnShare.addEventListener("click", handleShare);
+    els.btnDismissCard.addEventListener("click", dismissRevealCard);
+    // 点击照片区域也可收起卡片
+    document.getElementById("photo-area").addEventListener("click", (e) => {
+      if (state.isRevealed && !e.target.closest(".reveal-card")) {
+        dismissRevealCard();
+      }
+    });
   }
 
   function handleShare() {
@@ -929,7 +981,7 @@
   // ============================================
   async function onReady() {
     initDateDisplay();
-    await loadTodayPhoto();
+    await loadRandomPhoto();
     initCanvas();
     initSliderTicks();
     initFocusSlider();
