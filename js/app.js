@@ -163,21 +163,27 @@
     els.dateDisplay.textContent = window.i18n.t("date.format", { M, D });
   }
 
+  function fetchWithTimeout(url, opts = {}, timeoutMs = 3000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
   async function loadTodayPhoto() {
     const apiBase = window.location.hostname === "localhost"
       ? "http://localhost:3001"
       : "";
 
     try {
-      let resp = await fetch(`${apiBase}/api/photos/today`);
+      let resp = await fetchWithTimeout(`${apiBase}/api/photos/today`);
 
       // 如果 photo pool 为空（503），自动触发 fetch 填充池子
       if (resp.status === 503) {
         console.log("Photo pool empty, fetching new photos...");
-        const fetchResp = await fetch(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
+        const fetchResp = await fetchWithTimeout(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
         if (fetchResp.ok) {
           console.log("Photos fetched, retrying today photo...");
-          resp = await fetch(`${apiBase}/api/photos/today`);
+          resp = await fetchWithTimeout(`${apiBase}/api/photos/today`);
         }
       }
 
@@ -596,15 +602,15 @@
       : "";
 
     try {
-      let resp = await fetch(`${apiBase}/api/photos`);
+      let resp = await fetchWithTimeout(`${apiBase}/api/photos`);
 
       // 如果 photo pool 为空（503），自动触发 fetch 填充池子
       if (allowAutoFetch && resp.status === 503) {
         console.log("Photo pool empty, fetching new photos...");
-        const fetchResp = await fetch(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
+        const fetchResp = await fetchWithTimeout(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
         if (fetchResp.ok) {
           console.log("Photos fetched, retrying pool...");
-          resp = await fetch(`${apiBase}/api/photos`);
+          resp = await fetchWithTimeout(`${apiBase}/api/photos`);
         }
       }
 
