@@ -15,6 +15,11 @@
         reverse_proxy backend:3001
     }
 
+    # 静态资产必须真实存在，避免缺图时 fallback 到 index.html 被浏览器缓存成破图
+    handle /assets/* {
+        file_server
+    }
+
     # HTML 每次重验，确保用户能拿到最新资源版本号
     @html {
         path / /index.html
@@ -28,7 +33,7 @@
     header @versioned_static Cache-Control "public, max-age=300, must-revalidate"
 
     @media_static {
-        path *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+        path /assets/* *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
     }
     header @media_static Cache-Control "public, max-age=86400"
 

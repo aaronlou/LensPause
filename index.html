@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://bailian-bmp-pre.oss-cn-hangzhou.aliyuncs.com">
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="preconnect" href="https://plus.unsplash.com">
-  <link rel="stylesheet" href="css/style.css?v=20260604-8">
+  <link rel="stylesheet" href="css/style.css?v=20260604-9">
 </head>
 <body>
   <!-- 环境光晕层 -->
@@ -89,9 +89,17 @@
     <!-- 显影信息卡片 -->
     <section id="reveal-card" class="reveal-card" aria-hidden="true">
       <div class="reveal-inner" id="reveal-inner">
-        <div class="reveal-handle" id="reveal-handle">
-          <span class="handle-bar"></span>
-        </div>
+        <button
+          class="reveal-dismiss"
+          id="reveal-handle"
+          type="button"
+          aria-label="收起卡片"
+          data-i18n-attr="aria-label"
+          data-i18n-attr-key="reveal.dismiss"
+        >
+          <span class="dismiss-icon" aria-hidden="true">↓</span>
+          <span class="dismiss-text" data-i18n="reveal.dismissShort">收起</span>
+        </button>
         <div class="reveal-header">
           <h2 id="photo-title" class="photo-title"></h2>
           <p id="photo-photographer" class="photo-photographer"></p>
@@ -227,7 +235,16 @@
       <div class="donate-qrcode">
         <p class="qrcode-hint" data-i18n="donate.qrcode">扫码支持</p>
         <div class="qrcode-placeholder qr-image-frame">
-          <img class="qr-image" src="/assets/donate-qr.png" alt="收款码">
+          <img
+            class="qr-image"
+            id="donate-qr-image"
+            src="/assets/donate-qr-card.png?v=20260604-9"
+            data-fallback-src="/assets/donate-qr.png?v=20260604-9"
+            alt="收款码"
+            loading="eager"
+            decoding="async"
+          >
+          <span class="qr-error" id="donate-qr-error" data-i18n="donate.qrcodeError">二维码加载失败</span>
         </div>
       </div>
       <button class="donate-cta" id="donate-cta" data-i18n="donate.cta">赏一杯咖啡</button>
@@ -238,7 +255,7 @@
   <!-- 音效预留 -->
   <div id="audio-pool" aria-hidden="true"></div>
 
-  <script src="js/i18n.js?v=20260604-8"></script>
-  <script src="js/app.js?v=20260604-8"></script>
+  <script src="js/i18n.js?v=20260604-9"></script>
+  <script src="js/app.js?v=20260604-9"></script>
 </body>
 </html>

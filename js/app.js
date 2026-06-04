@@ -70,6 +70,8 @@
     donateClose: $("donate-close"),
     donateDismiss: $("donate-dismiss"),
     donateCta: $("donate-cta"),
+    donateQrImage: $("donate-qr-image"),
+    donateQrError: $("donate-qr-error"),
   };
 
   const ctx = els.fogCanvas.getContext("2d", { willReadFrequently: true });
@@ -943,6 +945,7 @@
 
   function showDonateModal() {
     if (!els.donateModal) return;
+    ensureDonateQrImage();
     els.donateModal.style.display = "flex";
     els.donateModal.setAttribute("aria-hidden", "false");
     void els.donateModal.offsetWidth;
@@ -961,6 +964,7 @@
   function initDonateModal() {
     if (!els.donateModal) return;
 
+    initDonateQrImage();
     els.donateClose.addEventListener("click", hideDonateModal);
     els.donateDismiss.addEventListener("click", hideDonateModal);
     els.donateOverlay.addEventListener("click", hideDonateModal);
@@ -972,6 +976,53 @@
         btn.classList.add("active");
       });
     });
+  }
+
+  function initDonateQrImage() {
+    if (!els.donateQrImage) return;
+    const frame = els.donateQrImage.closest(".qrcode-placeholder");
+
+    const markLoaded = () => {
+      frame?.classList.remove("qr-load-failed");
+    };
+
+    const useFallback = () => {
+      const fallbackSrc = els.donateQrImage.dataset.fallbackSrc;
+      if (fallbackSrc && els.donateQrImage.getAttribute("src") !== fallbackSrc) {
+        els.donateQrImage.src = fallbackSrc;
+        frame?.classList.remove("qr-load-failed");
+        return true;
+      }
+      return false;
+    };
+
+    const tryFallback = () => {
+      if (useFallback()) {
+        return;
+      }
+      frame?.classList.add("qr-load-failed");
+    };
+
+    els.donateQrImage.addEventListener("load", markLoaded);
+    els.donateQrImage.addEventListener("error", tryFallback);
+
+    ensureDonateQrImage();
+  }
+
+  function ensureDonateQrImage() {
+    if (!els.donateQrImage) return;
+    const frame = els.donateQrImage.closest(".qrcode-placeholder");
+    if (els.donateQrImage.complete && els.donateQrImage.naturalWidth > 0) {
+      frame?.classList.remove("qr-load-failed");
+    } else if (els.donateQrImage.complete) {
+      const fallbackSrc = els.donateQrImage.dataset.fallbackSrc;
+      if (fallbackSrc && els.donateQrImage.getAttribute("src") !== fallbackSrc) {
+        els.donateQrImage.src = fallbackSrc;
+        frame?.classList.remove("qr-load-failed");
+      } else {
+        frame?.classList.add("qr-load-failed");
+      }
+    }
   }
 
   async function loadRandomPhoto(allowAutoFetch = true, opts = {}) {
