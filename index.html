@@ -210,6 +210,33 @@
     <div class="boss-hint" data-i18n="boss.hint">按 Esc 返回息影</div>
   </div>
 
+  <!-- 打赏弹窗 -->
+  <div id="donate-modal" class="donate-modal" aria-hidden="true" style="display:none;">
+    <div class="donate-overlay" id="donate-overlay"></div>
+    <div class="donate-card">
+      <button class="donate-close" id="donate-close" aria-label="Close">×</button>
+      <div class="donate-header">
+        <span class="donate-icon">◐</span>
+        <h3 data-i18n="donate.title">支持息影</h3>
+        <p data-i18n="donate.subtitle">每日一帧，片刻清晰。您的支持让这份宁静延续。</p>
+      </div>
+      <div class="donate-amounts">
+        <button class="amount-btn" data-amount="1">¥1</button>
+        <button class="amount-btn" data-amount="5">¥5</button>
+        <button class="amount-btn active" data-amount="10">¥10</button>
+        <button class="amount-btn" data-amount="20">¥20</button>
+      </div>
+      <div class="donate-qrcode">
+        <p class="qrcode-hint" data-i18n="donate.qrcode">扫码支持</p>
+        <div class="qrcode-placeholder">
+          <span data-i18n="donate.qrcodePlaceholder">收款码</span>
+        </div>
+      </div>
+      <button class="donate-cta" id="donate-cta" data-i18n="donate.cta">赏一杯咖啡</button>
+      <button class="donate-dismiss" id="donate-dismiss" data-i18n="donate.dismiss">暂不支持，继续体验</button>
+    </div>
+  </div>
+
   <!-- 音效预留 -->
   <div id="audio-pool" aria-hidden="true"></div>
 

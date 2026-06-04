@@ -932,6 +932,185 @@ html, body {
 }
 
 /* ============================================
+   打赏弹窗
+   ============================================ */
+.donate-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.donate-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 11, 10, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.donate-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(180deg, rgba(30, 26, 22, 0.98), rgba(22, 18, 15, 0.98));
+  border: 1px solid rgba(201, 168, 108, 0.18);
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  animation: fadeInUp 0.4s var(--transition-smooth) forwards;
+}
+
+.donate-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.25s var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donate-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+}
+
+.donate-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.donate-icon {
+  display: inline-block;
+  font-size: 22px;
+  color: var(--color-accent);
+  margin-bottom: 8px;
+}
+
+.donate-header h3 {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-accent);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+.donate-header p {
+  font-size: 12px;
+  color: var(--color-text-dim);
+  line-height: 1.6;
+}
+
+.donate-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.amount-btn {
+  padding: 10px 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--transition-smooth);
+  font-family: var(--font-sans);
+}
+
+.amount-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+}
+
+.amount-btn.active {
+  background: rgba(201, 168, 108, 0.12);
+  border-color: rgba(201, 168, 108, 0.35);
+  color: var(--color-accent);
+}
+
+.donate-qrcode {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.qrcode-hint {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.qrcode-placeholder {
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.donate-cta {
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dim));
+  color: var(--color-bg);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s var(--transition-smooth);
+  margin-bottom: 10px;
+  font-family: var(--font-sans);
+}
+
+.donate-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(201, 168, 108, 0.25);
+}
+
+.donate-dismiss {
+  width: 100%;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color 0.25s var(--transition-smooth);
+  font-family: var(--font-sans);
+}
+
+.donate-dismiss:hover {
+  color: var(--color-text-dim);
+}
+
+/* ============================================
    动画关键帧
    ============================================ */
 @keyframes fadeInUp {

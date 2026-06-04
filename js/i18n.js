@@ -72,6 +72,12 @@
       "boss.note.channel": "渠道调整",
       "boss.note.loss": "大客户流失",
       "lang.switch": "切换语言",
+      "donate.title": "支持息影",
+      "donate.subtitle": "每日一帧，片刻清晰。您的支持让这份宁静延续。",
+      "donate.qrcode": "扫码支持",
+      "donate.qrcodePlaceholder": "收款码",
+      "donate.cta": "赏一杯咖啡",
+      "donate.dismiss": "暂不支持，继续体验",
     },
     en: {
       "brand.name": "LensPause",
@@ -135,6 +141,12 @@
       "boss.note.channel": "Channel Adj.",
       "boss.note.loss": "Client Churn",
       "lang.switch": "Switch Language",
+      "donate.title": "Support LensPause",
+      "donate.subtitle": "One frame a day, a moment of clarity. Your support keeps this serenity alive.",
+      "donate.qrcode": "Scan to Support",
+      "donate.qrcodePlaceholder": "QR Code",
+      "donate.cta": "Buy Me a Coffee",
+      "donate.dismiss": "Not now, continue exploring",
     },
   };
 

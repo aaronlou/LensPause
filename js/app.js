@@ -63,6 +63,11 @@
     dateDisplay: $("date-display"),
     btnRestart: $("btn-restart"),
     btnShare: $("btn-share"),
+    donateModal: $("donate-modal"),
+    donateOverlay: $("donate-overlay"),
+    donateClose: $("donate-close"),
+    donateDismiss: $("donate-dismiss"),
+    donateCta: $("donate-cta"),
   };
 
   const ctx = els.fogCanvas.getContext("2d", { willReadFrequently: true });
@@ -631,6 +636,73 @@
     els.photoQuote.textContent = p.quote;
   }
 
+  // ============================================
+  // 打赏弹窗计数与触发
+  // ============================================
+  const DONATE_COUNT_KEY = "lenspause_restart_count";
+  const DONATE_DATE_KEY = "lenspause_restart_date";
+  const DONATE_THRESHOLD = 4;
+
+  function getTodayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+
+  function incrementRestartCount() {
+    const today = getTodayStr();
+    const storedDate = sessionStorage.getItem(DONATE_DATE_KEY);
+    let count = parseInt(sessionStorage.getItem(DONATE_COUNT_KEY) || "0", 10);
+
+    if (storedDate !== today) {
+      count = 0;
+      sessionStorage.setItem(DONATE_DATE_KEY, today);
+    }
+
+    count += 1;
+    sessionStorage.setItem(DONATE_COUNT_KEY, String(count));
+    return count;
+  }
+
+  function shouldShowDonate() {
+    const today = getTodayStr();
+    const storedDate = sessionStorage.getItem(DONATE_DATE_KEY);
+    const count = parseInt(sessionStorage.getItem(DONATE_COUNT_KEY) || "0", 10);
+    return storedDate === today && count >= DONATE_THRESHOLD;
+  }
+
+  function showDonateModal() {
+    if (!els.donateModal) return;
+    els.donateModal.style.display = "flex";
+    els.donateModal.setAttribute("aria-hidden", "false");
+    void els.donateModal.offsetWidth;
+    els.donateModal.style.opacity = "1";
+  }
+
+  function hideDonateModal() {
+    if (!els.donateModal) return;
+    els.donateModal.style.opacity = "0";
+    setTimeout(() => {
+      els.donateModal.style.display = "none";
+      els.donateModal.setAttribute("aria-hidden", "true");
+    }, 300);
+  }
+
+  function initDonateModal() {
+    if (!els.donateModal) return;
+
+    els.donateClose.addEventListener("click", hideDonateModal);
+    els.donateDismiss.addEventListener("click", hideDonateModal);
+    els.donateOverlay.addEventListener("click", hideDonateModal);
+
+    // 金额按钮切换
+    document.querySelectorAll(".amount-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".amount-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+  }
+
   function resetReveal() {
     state.isRevealed = false;
     state.focusValue = 0;
@@ -655,6 +727,12 @@
     els.interactionHint.classList.remove("hidden");
 
     drawFog();
+
+    // 计数并判断是否弹出打赏
+    const count = incrementRestartCount();
+    if (count >= DONATE_THRESHOLD) {
+      setTimeout(showDonateModal, 600);
+    }
   }
 
   // ============================================
@@ -967,6 +1045,7 @@
     initBossKey();
     initRevealActions();
     initAudioOnFirstInteraction();
+    initDonateModal();
     // 延迟应用演示参数
     setTimeout(applyDemoParams, 100);
   }
