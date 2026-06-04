@@ -21,6 +21,8 @@
     canvasScale: 1,
     revealCardTimer: null,
     photoLoadToken: 0,
+    preloadedPhotos: [],
+    preloadPromise: null,
   };
 
   // ============================================
@@ -72,8 +74,18 @@
 
   const ctx = els.fogCanvas.getContext("2d", { willReadFrequently: true });
   const LAST_PHOTO_ID_KEY = "lenspause_last_photo_id";
+  const LAST_QUOTE_KEY = "lenspause_last_quote";
+  const PHOTO_POOL_CACHE_KEY = "lenspause_photo_pool_cache";
   const REVEAL_CARD_DELAY_MS = 3000;
   const PHOTO_LOADING_CLASS = "photo-loading";
+  const PHOTO_PRELOAD_COUNT = 3;
+  const PHOTO_POOL_CACHE_LIMIT = 20;
+  const PHOTO_POOL_CACHE_TTL_MS = 10 * 60 * 1000;
+  const INSTANT_PHOTO_TIMEOUT_MS = 450;
+  const PREVIEW_PHOTO_WIDTH = 640;
+  const DISPLAY_PHOTO_WIDTH = 1800;
+  const PREVIEW_PHOTO_QUALITY = 65;
+  const DISPLAY_PHOTO_QUALITY = 90;
   const DEFAULT_PHOTO_URL = "https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=800&q=80";
   const DEFAULT_EXIF = {
     camera: "Unknown Camera",
@@ -82,6 +94,20 @@
     shutter: "1/125s",
     aperture: "f/5.6",
   };
+  const MINDFUL_QUOTES = [
+    "清晰不是抵达，是你愿意多停一秒。",
+    "慢慢调焦，世界会把边缘交还给你。",
+    "别急着看清，光也需要一点时间落定。",
+    "模糊不是失败，是注意力正在靠近。",
+    "把手放慢，答案会自己浮出来。",
+    "有些画面，只在耐心里显影。",
+    "今天的清晰，先从一次呼吸开始。",
+    "你不必立刻确定，只要继续靠近。",
+    "当噪点安静下来，心也会有轮廓。",
+    "对焦的过程，本身就是一次暂停。",
+    "让画面慢慢回来，也让自己慢慢回来。",
+    "光线抵达之前，先把急切放下。",
+  ];
 
   // ============================================
   // 音效系统（预留接口）
@@ -261,10 +287,12 @@
     const focus = raw.focus_params || raw.focusParams || {};
     const exif = raw.exif || {};
     const url = getDisplayPhotoUrl(raw);
+    const previewUrl = getPreviewPhotoUrl(raw, url);
 
     return {
       id: String(raw.id || url || `photo-${Date.now()}`),
       url,
+      previewUrl,
       title: raw.title || window.i18n.t("photo.alt") || "Today's Photo",
       photographer: raw.photographer || "Unknown Photographer",
       photographer_link: raw.photographer_link || raw.photographerLink || "",
@@ -275,7 +303,7 @@
         shutter: exif.shutter || DEFAULT_EXIF.shutter,
         aperture: exif.aperture || DEFAULT_EXIF.aperture,
       },
-      quote: raw.quote || "片刻清晰，也是一种抵达。",
+      quote: selectMindfulQuote(),
       sweetSpot: clampNumber(focus.sweet_spot ?? focus.sweetSpot ?? raw.sweetSpot, 20, 80, 50),
       tolerance: clampNumber(focus.tolerance ?? raw.tolerance, 3, 12, 6),
       curve: clampNumber(focus.curve ?? raw.curve, 0.5, 1.1, 0.8),
@@ -285,16 +313,23 @@
   function getDisplayPhotoUrl(raw = {}) {
     const primaryUrl = raw.image_url || raw.imageUrl || raw.url;
     const fallbackUrl = raw.image_thumb_url || raw.imageThumbUrl || DEFAULT_PHOTO_URL;
-    return upgradeUnsplashImageUrl(primaryUrl || fallbackUrl);
+    return tuneUnsplashImageUrl(primaryUrl || fallbackUrl, DISPLAY_PHOTO_WIDTH, DISPLAY_PHOTO_QUALITY);
   }
 
-  function upgradeUnsplashImageUrl(url) {
-    if (!url || !url.includes("images.unsplash.com/")) return url || DEFAULT_PHOTO_URL;
+  function getPreviewPhotoUrl(raw = {}, displayUrl = DEFAULT_PHOTO_URL) {
+    const thumbUrl = raw.image_thumb_url || raw.imageThumbUrl || raw.thumbnail_url || raw.thumbnailUrl;
+    return tuneUnsplashImageUrl(thumbUrl || displayUrl || DEFAULT_PHOTO_URL, PREVIEW_PHOTO_WIDTH, PREVIEW_PHOTO_QUALITY);
+  }
+
+  function tuneUnsplashImageUrl(url, width, quality) {
+    if (!url) return DEFAULT_PHOTO_URL;
     try {
       const imageUrl = new URL(url);
-      const width = parseInt(imageUrl.searchParams.get("w") || "0", 10);
-      if (!width || width < 1600) imageUrl.searchParams.set("w", "1800");
-      imageUrl.searchParams.set("q", "90");
+      const host = imageUrl.hostname;
+      const isUnsplashCdn = host === "images.unsplash.com" || host === "plus.unsplash.com";
+      if (!isUnsplashCdn) return url;
+      imageUrl.searchParams.set("w", String(width));
+      imageUrl.searchParams.set("q", String(quality));
       imageUrl.searchParams.set("fit", imageUrl.searchParams.get("fit") || "crop");
       imageUrl.searchParams.set("auto", imageUrl.searchParams.get("auto") || "format");
       return imageUrl.toString();
@@ -321,8 +356,43 @@
     if (!photo?.id) return;
     try {
       sessionStorage.setItem(LAST_PHOTO_ID_KEY, photo.id);
+      if (photo.quote) sessionStorage.setItem(LAST_QUOTE_KEY, photo.quote);
     } catch (err) {
       // sessionStorage 可能在隐私模式下不可用，忽略即可。
+    }
+  }
+
+  function getLastQuote() {
+    try {
+      return sessionStorage.getItem(LAST_QUOTE_KEY);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function readCachedPhotoPool() {
+    try {
+      const raw = sessionStorage.getItem(PHOTO_POOL_CACHE_KEY);
+      if (!raw) return [];
+      const cached = JSON.parse(raw);
+      if (!cached || !Array.isArray(cached.photos)) return [];
+      if (Date.now() - Number(cached.savedAt || 0) > PHOTO_POOL_CACHE_TTL_MS) return [];
+      return cached.photos;
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function writeCachedPhotoPool(pool) {
+    if (!Array.isArray(pool) || pool.length === 0) return;
+    try {
+      const cached = {
+        savedAt: Date.now(),
+        photos: pool.slice(0, PHOTO_POOL_CACHE_LIMIT),
+      };
+      sessionStorage.setItem(PHOTO_POOL_CACHE_KEY, JSON.stringify(cached));
+    } catch (err) {
+      // 缓存只是体验优化，写入失败不影响主流程。
     }
   }
 
@@ -332,7 +402,148 @@
       ? photos.filter((photo) => String(photo.id) !== String(excludeId))
       : photos;
     const pool = candidates.length > 0 ? candidates : photos;
-    return pool[Math.floor(Math.random() * pool.length)];
+    return pool[randomIndex(pool.length)];
+  }
+
+  function selectMindfulQuote() {
+    const previousQuote = state.photo?.quote || getLastQuote();
+    const candidates = MINDFUL_QUOTES.filter((quote) => quote !== previousQuote);
+    const pool = candidates.length > 0 ? candidates : MINDFUL_QUOTES;
+    return pool[randomIndex(pool.length)] || "片刻清晰，也是一种抵达。";
+  }
+
+  function randomIndex(max) {
+    if (!Number.isFinite(max) || max <= 0) return 0;
+    const cryptoObj = window.crypto || window.msCrypto;
+    if (cryptoObj?.getRandomValues) {
+      const values = new Uint32Array(1);
+      cryptoObj.getRandomValues(values);
+      return values[0] % max;
+    }
+    return Math.floor(Math.random() * max);
+  }
+
+  async function fetchPhotoPool(allowAutoFetch = true) {
+    const apiBase = window.location.hostname === "localhost"
+      ? "http://localhost:3001"
+      : "";
+
+    let resp = await fetchWithTimeout(`${apiBase}/api/photos`);
+    if (allowAutoFetch && resp.status === 503) {
+      console.log("Photo pool empty, fetching new photos...");
+      const fetchResp = await fetchWithTimeout(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
+      if (fetchResp.ok) {
+        console.log("Photos fetched, retrying pool...");
+        resp = await fetchWithTimeout(`${apiBase}/api/photos`);
+      }
+    }
+
+    if (!resp.ok) throw new Error("API failed");
+    const pool = await resp.json();
+    if (!Array.isArray(pool) || pool.length === 0) throw new Error("Empty pool");
+    writeCachedPhotoPool(pool);
+    return pool;
+  }
+
+  async function preloadImage(url, fetchPriority = "low") {
+    if (!url) throw new Error("Missing image URL");
+    const img = new Image();
+    img.decoding = "async";
+    if ("fetchPriority" in img) img.fetchPriority = fetchPriority;
+    img.src = url;
+    if (img.decode) {
+      await img.decode();
+    } else if (!img.complete) {
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+    }
+    return img.currentSrc || img.src;
+  }
+
+  async function preloadPhoto(photo) {
+    await preloadImage(photo.previewUrl || photo.url);
+    await preloadImage(photo.url);
+    return photo;
+  }
+
+  async function warmPhotoCache(allowAutoFetch = true) {
+    if (state.preloadPromise) return state.preloadPromise;
+    state.preloadPromise = (async () => {
+      try {
+        const slots = PHOTO_PRELOAD_COUNT - state.preloadedPhotos.length;
+        if (slots <= 0) return;
+        const pool = await fetchPhotoPool(allowAutoFetch);
+        const queuedIds = new Set(state.preloadedPhotos.map((photo) => String(photo.id)));
+        const currentId = state.photo ? String(state.photo.id) : null;
+        const shuffled = pool
+          .map((photo) => normalizePhoto(photo))
+          .sort(() => Math.random() - 0.5);
+        const selected = shuffled
+          .filter((photo) => String(photo.id) !== currentId && !queuedIds.has(String(photo.id)))
+          .slice(0, slots);
+
+        const warmed = await Promise.allSettled(selected.map(async (photo) => {
+          return preloadPhoto(photo);
+        }));
+
+        warmed.forEach((result) => {
+          if (result.status === "fulfilled" && !state.preloadedPhotos.some((photo) => photo.id === result.value.id)) {
+            state.preloadedPhotos.push(result.value);
+          }
+        });
+      } catch (err) {
+        console.warn("Photo preload failed", err);
+      } finally {
+        state.preloadPromise = null;
+      }
+    })();
+    return state.preloadPromise;
+  }
+
+  function takePreloadedPhoto(excludeId = state.photo?.id || getLastPhotoId()) {
+    const index = state.preloadedPhotos.findIndex((photo) => String(photo.id) !== String(excludeId));
+    if (index === -1) return null;
+    return state.preloadedPhotos.splice(index, 1)[0];
+  }
+
+  async function pickNetworkPhoto(allowAutoFetch = true, excludeId = state.photo?.id || getLastPhotoId()) {
+    const pool = await fetchPhotoPool(allowAutoFetch);
+    return normalizePhoto(selectDifferentPhoto(pool, excludeId));
+  }
+
+  function pickCachedPhoto(excludeId = state.photo?.id || getLastPhotoId()) {
+    const pool = readCachedPhotoPool();
+    if (pool.length === 0) return null;
+    return normalizePhoto(selectDifferentPhoto(pool, excludeId));
+  }
+
+  function withTimeout(promise, timeoutMs) {
+    let timer;
+    return new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("Photo request timeout")), timeoutMs);
+      promise.then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      }, (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+  }
+
+  function queuePhotoForPreload(photoPromise) {
+    photoPromise.then(async (photo) => {
+      if (!photo || state.preloadedPhotos.some((item) => String(item.id) === String(photo.id))) return;
+      if (state.photo && String(state.photo.id) === String(photo.id)) return;
+      const warmedPhoto = await preloadPhoto(photo);
+      if (!state.preloadedPhotos.some((item) => String(item.id) === String(warmedPhoto.id))) {
+        state.preloadedPhotos.unshift(warmedPhoto);
+      }
+    }).catch((err) => {
+      console.warn("Deferred photo preload failed", err);
+    });
   }
 
   async function applyPhotoToDom() {
@@ -363,31 +574,58 @@
         wrapper.appendChild(fallback);
       }
     };
-    await loadImageIntoElement(state.photo.url, token);
+    await loadPhotoIntoElement(state.photo, token);
   }
 
-  async function loadImageIntoElement(url, token) {
+  async function loadPhotoIntoElement(photo, token) {
+    const previewUrl = photo.previewUrl || photo.url;
+    const finalUrl = photo.url || previewUrl;
     els.photoImage.removeAttribute("src");
-    els.photoImage.src = url;
+    els.photoImage.fetchPriority = "high";
+    els.photoImage.src = previewUrl;
 
     try {
-      if (els.photoImage.decode) {
-        await els.photoImage.decode();
-      } else if (!els.photoImage.complete) {
-        await new Promise((resolve, reject) => {
-          els.photoImage.onload = resolve;
-          els.photoImage.onerror = reject;
-        });
-      }
+      await waitForImageElement(els.photoImage);
     } catch (err) {
       if (token === state.photoLoadToken) els.photoImage.onerror();
       return;
     }
 
     if (token !== state.photoLoadToken) return;
-    state.isPhotoReady = true;
     els.app.classList.remove(PHOTO_LOADING_CLASS);
-    checkRevealCondition();
+    updateFocusVisuals(state.focusValue);
+
+    if (previewUrl === finalUrl) {
+      state.isPhotoReady = true;
+      checkRevealCondition();
+      return;
+    }
+
+    preloadImage(finalUrl, "high").then((loadedUrl) => {
+      if (token !== state.photoLoadToken) return;
+      els.photoImage.src = loadedUrl;
+      state.isPhotoReady = true;
+      els.app.classList.remove(PHOTO_LOADING_CLASS);
+      updateFocusVisuals(state.focusValue);
+      checkRevealCondition();
+    }).catch((err) => {
+      if (token !== state.photoLoadToken) return;
+      console.warn("High resolution photo failed, keeping preview", err);
+      state.isPhotoReady = true;
+      checkRevealCondition();
+    });
+  }
+
+  async function waitForImageElement(img) {
+    if (img.decode) {
+      await img.decode();
+      return;
+    }
+    if (img.complete && img.naturalWidth > 0) return;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
   }
 
   // 每次页面加载时随机化对焦参数，制造不确定性
@@ -736,34 +974,35 @@
     });
   }
 
-  async function loadRandomPhoto(allowAutoFetch = true) {
-    const apiBase = window.location.hostname === "localhost"
-      ? "http://localhost:3001"
-      : "";
+  async function loadRandomPhoto(allowAutoFetch = true, opts = {}) {
+    const excludeId = state.photo?.id || getLastPhotoId();
 
     try {
-      let resp = await fetchWithTimeout(`${apiBase}/api/photos`);
-
-      // 如果 photo pool 为空（503），自动触发 fetch 填充池子
-      if (allowAutoFetch && resp.status === 503) {
-        console.log("Photo pool empty, fetching new photos...");
-        const fetchResp = await fetchWithTimeout(`${apiBase}/api/photos/fetch?count=10`, { method: "POST" });
-        if (fetchResp.ok) {
-          console.log("Photos fetched, retrying pool...");
-          resp = await fetchWithTimeout(`${apiBase}/api/photos`);
+      const preloadedPhoto = takePreloadedPhoto(excludeId);
+      if (preloadedPhoto) {
+        state.photo = preloadedPhoto;
+      } else if (opts.instantFallback) {
+        const networkPhoto = pickNetworkPhoto(allowAutoFetch, excludeId);
+        const cachedPhoto = pickCachedPhoto(excludeId);
+        if (cachedPhoto) {
+          state.photo = cachedPhoto;
+          queuePhotoForPreload(networkPhoto);
+        } else {
+          try {
+            state.photo = await withTimeout(networkPhoto, INSTANT_PHOTO_TIMEOUT_MS);
+          } catch (err) {
+            console.warn("Photo API slow, starting with instant fallback", err);
+            state.photo = getFallbackPhoto(excludeId);
+            queuePhotoForPreload(networkPhoto);
+          }
         }
+      } else {
+        state.photo = await pickNetworkPhoto(allowAutoFetch, excludeId);
       }
-
-      if (!resp.ok) throw new Error("API failed");
-      const pool = await resp.json();
-      if (!Array.isArray(pool) || pool.length === 0) throw new Error("Empty pool");
-
-      const selected = selectDifferentPhoto(pool, state.photo?.id || getLastPhotoId());
-      state.photo = normalizePhoto(selected);
       randomizeFocusParams();
     } catch (err) {
       console.warn("Failed to load random photo, using local fallback", err);
-      state.photo = getFallbackPhoto(state.photo?.id || getLastPhotoId());
+      state.photo = getFallbackPhoto(excludeId);
       randomizeFocusParams();
     }
 
@@ -772,6 +1011,7 @@
     await applyPhotoToDom();
     updateFocusVisuals(state.focusValue);
     updateSweetSpotZone();
+    void warmPhotoCache(false);
   }
 
   function resetReveal() {
@@ -803,7 +1043,7 @@
     drawFog();
 
     // 换一张新照片
-    loadRandomPhoto();
+    loadRandomPhoto(true, { instantFallback: true });
 
     // 计数并判断是否弹出打赏
     const count = incrementRestartCount();
@@ -1107,6 +1347,10 @@
       hideInteractionHint();
     }
     if (params.has("reveal")) {
+      if (!state.isPhotoReady) {
+        setTimeout(applyDemoParams, 120);
+        return;
+      }
       const p = state.photo;
       const revealFocus = p ? p.sweetSpot : 50;
       state.focusValue = revealFocus;
@@ -1118,7 +1362,7 @@
       els.photoImage.style.filter = "blur(0px)";
       els.photoImage.classList.add("revealed");
       els.fogCanvas.classList.add("revealed");
-      els.focusSlider.disabled = true;
+      els.focusSlider.disabled = false;
       fillRevealCard();
       els.revealCard.style.transition = "none";
       els.revealCard.classList.add("visible");
@@ -1135,7 +1379,6 @@
   // ============================================
   async function onReady() {
     initDateDisplay();
-    await loadRandomPhoto();
     initCanvas();
     initSliderTicks();
     initFocusSlider();
@@ -1145,6 +1388,7 @@
     initRevealActions();
     initAudioOnFirstInteraction();
     initDonateModal();
+    await loadRandomPhoto(true, { instantFallback: true });
     // 延迟应用演示参数
     setTimeout(applyDemoParams, 100);
   }
