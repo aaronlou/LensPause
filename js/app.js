@@ -248,8 +248,8 @@
     if (!state.photo) return;
     // sweetSpot: 20-80 之间随机整数
     state.photo.sweetSpot = Math.floor(20 + Math.random() * 61);
-    // tolerance: 3-8 之间随机整数
-    state.photo.tolerance = Math.floor(3 + Math.random() * 6);
+    // tolerance: 5-10 之间随机整数（配合 step=5 段落感，确保总能合焦）
+    state.photo.tolerance = Math.floor(5 + Math.random() * 6);
     // curve: 0.5-1.1 之间随机，保留两位小数
     state.photo.curve = Math.round((0.5 + Math.random() * 0.6) * 100) / 100;
   }
@@ -433,14 +433,15 @@
   }
 
   function handleFocusChange() {
-    // 滑块释放时的处理：稍微吸附到最近的刻度
+    // 滑块释放时强制吸附到最近的 5% 刻度，产生机械段落感
     const value = parseInt(els.focusSlider.value, 10);
     const snapped = Math.round(value / 5) * 5;
-    if (Math.abs(snapped - value) <= 2) {
-      els.focusSlider.value = snapped;
-      state.focusValue = snapped;
-      updateFocusVisuals(snapped);
-    }
+    els.focusSlider.value = snapped;
+    state.focusValue = snapped;
+    updateFocusVisuals(snapped);
+
+    // 段落吸附触觉反馈
+    if (navigator.vibrate) navigator.vibrate(10);
   }
 
   function updateFocusVisuals(value) {

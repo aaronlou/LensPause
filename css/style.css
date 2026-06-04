@@ -369,20 +369,22 @@ html, body {
 .tick-mark {
   position: absolute;
   top: 0;
-  width: 1px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  transition: background 0.2s, height 0.2s;
+  width: 2px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+  transition: background 0.2s, height 0.2s, transform 0.15s var(--transition-spring);
 }
 
 .tick-mark.major {
-  height: 6px;
-  background: rgba(255, 255, 255, 0.18);
+  height: 8px;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .tick-mark.active {
   background: var(--color-accent);
-  height: 7px;
+  height: 9px;
+  transform: translateX(-0.5px) scaleY(1.2);
 }
 
 /* 甜点区域高亮 */
@@ -637,36 +639,37 @@ html, body {
 
 .photo-quote {
   font-family: var(--font-serif);
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--color-text);
-  text-align: center;
-  padding: 16px 12px;
-  position: relative;
-  margin-bottom: 20px;
+  font-size: 18px;
+  line-height: 1.9;
   color: var(--color-accent);
-  opacity: 0.9;
+  text-align: center;
+  padding: 24px 20px;
+  position: relative;
+  margin-bottom: 24px;
+  opacity: 0.95;
+  letter-spacing: 1px;
 }
 
 .photo-quote::before,
 .photo-quote::after {
   font-family: var(--font-serif);
-  font-size: 24px;
+  font-size: 32px;
   color: var(--color-accent-dim);
-  opacity: 0.5;
+  opacity: 0.4;
   position: absolute;
+  line-height: 1;
 }
 
 .photo-quote::before {
   content: "「";
-  top: 0;
-  left: -4px;
+  top: 4px;
+  left: 0;
 }
 
 .photo-quote::after {
   content: "」";
-  bottom: -8px;
-  right: -4px;
+  bottom: 4px;
+  right: 0;
 }
 
 .reveal-actions {
