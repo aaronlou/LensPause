@@ -14,10 +14,13 @@
     photo: null,
     focusValue: 0,
     isRevealed: false,
+    hasRevealTriggered: false,
     isBossMode: false,
     isDragging: false,
+    isPhotoReady: false,
     canvasScale: 1,
     revealCardTimer: null,
+    photoLoadToken: 0,
   };
 
   // ============================================
@@ -70,6 +73,7 @@
   const ctx = els.fogCanvas.getContext("2d", { willReadFrequently: true });
   const LAST_PHOTO_ID_KEY = "lenspause_last_photo_id";
   const REVEAL_CARD_DELAY_MS = 3000;
+  const PHOTO_LOADING_CLASS = "photo-loading";
   const DEFAULT_PHOTO_URL = "https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=800&q=80";
   const DEFAULT_EXIF = {
     camera: "Unknown Camera",
@@ -212,7 +216,7 @@
     randomizeFocusParams();
 
     rememberLastPhoto(state.photo);
-    applyPhotoToDom();
+    await applyPhotoToDom();
     updateSweetSpotZone();
   }
 
@@ -331,12 +335,15 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  function applyPhotoToDom() {
+  async function applyPhotoToDom() {
     if (!state.photo) return;
+    const token = ++state.photoLoadToken;
     const wrapper = els.photoImage.parentElement;
     const existingFallback = wrapper.querySelector(".photo-fallback");
     if (existingFallback) existingFallback.remove();
 
+    state.isPhotoReady = false;
+    els.app.classList.add(PHOTO_LOADING_CLASS);
     els.photoImage.style.display = "";
     els.photoImage.alt = state.photo.title;
     els.photoImage.classList.toggle("revealed", state.isRevealed);
@@ -356,7 +363,31 @@
         wrapper.appendChild(fallback);
       }
     };
-    els.photoImage.src = state.photo.url;
+    await loadImageIntoElement(state.photo.url, token);
+  }
+
+  async function loadImageIntoElement(url, token) {
+    els.photoImage.removeAttribute("src");
+    els.photoImage.src = url;
+
+    try {
+      if (els.photoImage.decode) {
+        await els.photoImage.decode();
+      } else if (!els.photoImage.complete) {
+        await new Promise((resolve, reject) => {
+          els.photoImage.onload = resolve;
+          els.photoImage.onerror = reject;
+        });
+      }
+    } catch (err) {
+      if (token === state.photoLoadToken) els.photoImage.onerror();
+      return;
+    }
+
+    if (token !== state.photoLoadToken) return;
+    state.isPhotoReady = true;
+    els.app.classList.remove(PHOTO_LOADING_CLASS);
+    checkRevealCondition();
   }
 
   // 每次页面加载时随机化对焦参数，制造不确定性
@@ -520,6 +551,7 @@
   function handleFocusInput(e) {
     const value = parseInt(e.target.value, 10);
     state.focusValue = value;
+    if (state.hasRevealTriggered) els.photoImage.classList.remove("revealed");
     updateFocusVisuals(value);
     audio.playFocus(value / 100);
     hideInteractionHint();
@@ -553,10 +585,6 @@
 
   function updateFocusVisuals(value) {
     const p = state.photo;
-    if (state.isRevealed) {
-      els.photoImage.style.filter = "blur(0px)";
-      return;
-    }
     let blurPx = 20;
     if (p) {
       blurPx = calculateBlur(value, p.sweetSpot, p.tolerance, p.curve);
@@ -576,7 +604,7 @@
   // 显影逻辑
   // ============================================
   function checkRevealCondition() {
-    if (state.isRevealed || !state.photo) return;
+    if (state.hasRevealTriggered || !state.photo || !state.isPhotoReady) return;
     const p = state.photo;
     const inSweetSpot = Math.abs(state.focusValue - p.sweetSpot) <= p.tolerance;
     if (inSweetSpot) {
@@ -586,6 +614,7 @@
 
   function performReveal() {
     state.isRevealed = true;
+    state.hasRevealTriggered = true;
     clearRevealCardTimer();
 
     // 清除剩余雾气
@@ -598,9 +627,6 @@
     els.photoImage.style.filter = "blur(0px)";
     els.photoImage.classList.add("revealed");
     els.fogCanvas.classList.add("revealed");
-
-    // 禁用滑块
-    els.focusSlider.disabled = true;
 
     // 播放快门声
     audio.playShutter();
@@ -743,7 +769,7 @@
 
     // 更新图片元素
     rememberLastPhoto(state.photo);
-    applyPhotoToDom();
+    await applyPhotoToDom();
     updateFocusVisuals(state.focusValue);
     updateSweetSpotZone();
   }
@@ -751,6 +777,8 @@
   function resetReveal() {
     clearRevealCardTimer();
     state.isRevealed = false;
+    state.hasRevealTriggered = false;
+    state.isPhotoReady = false;
     state.focusValue = 0;
     lastTickCrossed = -1;
 
@@ -760,7 +788,7 @@
     els.photoImage.classList.remove("revealed");
     els.fogCanvas.classList.remove("revealed");
 
-    els.focusSlider.disabled = false;
+    els.app.classList.add(PHOTO_LOADING_CLASS);
     els.focusSlider.value = 0;
     updateFocusVisuals(0);
     updateFocusHUD(0);

@@ -204,9 +204,13 @@ html, body {
   -webkit-user-drag: none;
 }
 
-#app.revealed #photo-image,
+#app.photo-loading #photo-image {
+  opacity: 0;
+}
+
 #photo-image.revealed {
   filter: blur(0) !important;
+  opacity: 1;
 }
 
 #fog-canvas {
@@ -217,6 +221,10 @@ html, body {
   height: 100%;
   touch-action: none;
   cursor: none;
+}
+
+#app.photo-loading #fog-canvas {
+  opacity: 1;
 }
 
 #app.revealed #fog-canvas,
@@ -1186,8 +1194,7 @@ html, body {
   }
 }
 
-/* 显影后隐藏滑块区域 */
-#app.revealed .focus-controls,
+/* 显影后隐藏辅助提示，保留对焦环继续可操作 */
 #app.revealed .progress-indicators,
 #app.revealed .interaction-hint {
   opacity: 0;
