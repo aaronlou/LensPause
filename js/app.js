@@ -427,17 +427,11 @@
     audio.playFocus(value / 100);
     hideInteractionHint();
 
-    // 刻度段落感：经过 5% 刻度点时触发 click 反馈
+    // 经过 5% 刻度点时轻反馈
     const tickSpacing = 5;
-    const currentTick = Math.round(value / tickSpacing);
+    const currentTick = Math.floor(value / tickSpacing);
     if (currentTick !== lastTickCrossed) {
       lastTickCrossed = currentTick;
-      // 视觉反馈
-      els.focusSlider.classList.add("click-bump");
-      setTimeout(() => els.focusSlider.classList.remove("click-bump"), 80);
-      // 触觉反馈（移动端）
-      if (navigator.vibrate) navigator.vibrate(6);
-      // 更新刻度高亮
       document.querySelectorAll(".tick-mark").forEach((t) => {
         const tv = parseInt(t.dataset.value, 10);
         t.classList.toggle("active", tv === currentTick * tickSpacing);
@@ -448,15 +442,10 @@
   }
 
   function handleFocusChange() {
-    // 滑块释放时强制吸附到最近的 5% 刻度，产生机械段落感
+    // 释放时不再吸附，保留用户精调结果
     const value = parseInt(els.focusSlider.value, 10);
-    const snapped = Math.round(value / 5) * 5;
-    els.focusSlider.value = snapped;
-    state.focusValue = snapped;
-    updateFocusVisuals(snapped);
-
-    // 段落吸附触觉反馈
-    if (navigator.vibrate) navigator.vibrate(10);
+    state.focusValue = value;
+    updateFocusVisuals(value);
   }
 
   function updateFocusVisuals(value) {
