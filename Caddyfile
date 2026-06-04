@@ -15,11 +15,22 @@
         reverse_proxy backend:3001
     }
 
-    # 静态资源长期缓存
-    @static {
-        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    # HTML 每次重验，确保用户能拿到最新资源版本号
+    @html {
+        path / /index.html
     }
-    header @static Cache-Control "public, max-age=86400"
+    header @html Cache-Control "no-cache, must-revalidate"
+
+    # JS/CSS 允许短缓存；通过 index.html 的版本号查询串做部署级缓存破除
+    @versioned_static {
+        path *.js *.css
+    }
+    header @versioned_static Cache-Control "public, max-age=300, must-revalidate"
+
+    @media_static {
+        path *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    }
+    header @media_static Cache-Control "public, max-age=86400"
 
     # SPA fallback + 静态文件服务
     handle {
