@@ -56,7 +56,12 @@ impl UnsplashClient {
         })?;
 
         let id = data["id"].as_str().unwrap_or("").to_string();
-        let display_url = data["urls"]["regular"].as_str().unwrap_or("").to_string();
+        let display_url = data["urls"]["raw"]
+            .as_str()
+            .map(|url| format!("{}&auto=format&fit=crop&w=1800&q=90", url))
+            .or_else(|| data["urls"]["full"].as_str().map(|url| url.to_string()))
+            .or_else(|| data["urls"]["regular"].as_str().map(|url| url.to_string()))
+            .unwrap_or_default();
         let thumb_url = data["urls"]["small"].as_str().unwrap_or("").to_string();
         let title = data["description"]
             .as_str()

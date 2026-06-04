@@ -45,6 +45,7 @@ services:
       - ./index.html:/var/www/lenspause/index.html:ro
       - ./css:/var/www/lenspause/css:ro
       - ./js:/var/www/lenspause/js:ro
+      - ./assets:/var/www/lenspause/assets:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

@@ -17,6 +17,7 @@
     isBossMode: false,
     isDragging: false,
     canvasScale: 1,
+    revealCardTimer: null,
   };
 
   // ============================================
@@ -68,6 +69,7 @@
 
   const ctx = els.fogCanvas.getContext("2d", { willReadFrequently: true });
   const LAST_PHOTO_ID_KEY = "lenspause_last_photo_id";
+  const REVEAL_CARD_DELAY_MS = 3000;
   const DEFAULT_PHOTO_URL = "https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=800&q=80";
   const DEFAULT_EXIF = {
     camera: "Unknown Camera",
@@ -254,7 +256,7 @@
   function normalizePhoto(raw = {}) {
     const focus = raw.focus_params || raw.focusParams || {};
     const exif = raw.exif || {};
-    const url = raw.image_url || raw.imageUrl || raw.url || raw.image_thumb_url || raw.imageThumbUrl || DEFAULT_PHOTO_URL;
+    const url = getDisplayPhotoUrl(raw);
 
     return {
       id: String(raw.id || url || `photo-${Date.now()}`),
@@ -274,6 +276,27 @@
       tolerance: clampNumber(focus.tolerance ?? raw.tolerance, 3, 12, 6),
       curve: clampNumber(focus.curve ?? raw.curve, 0.5, 1.1, 0.8),
     };
+  }
+
+  function getDisplayPhotoUrl(raw = {}) {
+    const primaryUrl = raw.image_url || raw.imageUrl || raw.url;
+    const fallbackUrl = raw.image_thumb_url || raw.imageThumbUrl || DEFAULT_PHOTO_URL;
+    return upgradeUnsplashImageUrl(primaryUrl || fallbackUrl);
+  }
+
+  function upgradeUnsplashImageUrl(url) {
+    if (!url || !url.includes("images.unsplash.com/")) return url || DEFAULT_PHOTO_URL;
+    try {
+      const imageUrl = new URL(url);
+      const width = parseInt(imageUrl.searchParams.get("w") || "0", 10);
+      if (!width || width < 1600) imageUrl.searchParams.set("w", "1800");
+      imageUrl.searchParams.set("q", "90");
+      imageUrl.searchParams.set("fit", imageUrl.searchParams.get("fit") || "crop");
+      imageUrl.searchParams.set("auto", imageUrl.searchParams.get("auto") || "format");
+      return imageUrl.toString();
+    } catch (err) {
+      return url;
+    }
   }
 
   function clampNumber(value, min, max, fallback) {
@@ -563,6 +586,7 @@
 
   function performReveal() {
     state.isRevealed = true;
+    clearRevealCardTimer();
 
     // 清除剩余雾气
     const w = els.fogCanvas.width / state.canvasScale;
@@ -584,15 +608,26 @@
     // 填充信息卡片
     fillRevealCard();
 
-    // 显示卡片
-    requestAnimationFrame(() => {
-      els.revealCard.classList.add("visible");
-      els.revealCard.setAttribute("aria-hidden", "false");
-      els.app.classList.add("revealed");
-    });
+    // 先留出完整看图时间，再显示卡片
+    els.app.classList.add("revealed");
+    state.revealCardTimer = setTimeout(showRevealCard, REVEAL_CARD_DELAY_MS);
 
     // 隐藏进度指示器
     els.focusProgress.parentElement.parentElement.style.opacity = "0";
+  }
+
+  function showRevealCard() {
+    if (!state.isRevealed) return;
+    requestAnimationFrame(() => {
+      els.revealCard.classList.add("visible");
+      els.revealCard.setAttribute("aria-hidden", "false");
+    });
+  }
+
+  function clearRevealCardTimer() {
+    if (!state.revealCardTimer) return;
+    clearTimeout(state.revealCardTimer);
+    state.revealCardTimer = null;
   }
 
   function fillRevealCard() {
@@ -714,6 +749,7 @@
   }
 
   function resetReveal() {
+    clearRevealCardTimer();
     state.isRevealed = false;
     state.focusValue = 0;
     lastTickCrossed = -1;
@@ -753,6 +789,7 @@
   // ============================================
   function dismissRevealCard() {
     if (!state.isRevealed) return;
+    clearRevealCardTimer();
     els.revealCard.classList.remove("visible");
     els.revealCard.setAttribute("aria-hidden", "true");
     els.app.classList.remove("revealed");
