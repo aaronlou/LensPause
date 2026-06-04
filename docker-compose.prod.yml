@@ -35,7 +35,7 @@ services:
     # 不绑定主机 80/443，避免与服务器上其他 Web 应用冲突
     # 只暴露一个内部端口给全局反向代理使用
     ports:
-      - "127.0.0.1:18080:80"
+      - "0.0.0.0:18080:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./index.html:/var/www/lenspause/index.html:ro
